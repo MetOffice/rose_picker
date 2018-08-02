@@ -1,0 +1,147 @@
+#!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+##############################################################################
+# New license of GPL license??????
+##############################################################################
+
+from __future__ import print_function
+
+import argparse
+import os.path
+import collections
+import re
+import pickle
+
+import rose
+from rose.config import ConfigSyntaxError
+from rose.config_tree import ConfigTreeLoader
+
+
+class RosePickerException(Exception):
+    pass
+
+if __name__ == '__main__':
+
+    PARSER = argparse.ArgumentParser(add_help=False,
+                                     description=__doc__)
+    PARSER.add_argument('-help', '-h', '--help', action='help',
+                        help='Show this help message and exit')
+    PARSER.add_argument('-directory', metavar='path', default='.',
+                        help='Generated source files are put here.')
+    PARSER.add_argument('-include_dirs', nargs='*',
+                        help='The directories to search for '
+                        'any inherited metadata files')
+    PARSER.add_argument('meta_filename', metavar='description-file',
+                        nargs=1, help='The metadata file to load')
+
+    ARGS = PARSER.parse_args()
+
+    DESCRIPTION_LIST = []
+
+    META_FILENAME = ARGS.meta_filename[0]
+    INCLUDE_DIRS = ARGS.include_dirs
+    OUTPUT_DIR = ARGS.directory
+
+    '''
+    file_object   : File object which is the opened configuration file.
+    meta_filename : String, Filename of configuration file
+    (including path).
+    include_dir   : List of directory paths to search for configuration
+    files to expand any import statements.
+
+    Configuration files are taken to be the same as the basename given
+    by the argument, meta_filename
+    '''
+
+    # Load in a config file. This is using Rose's "config.py" code
+    # which is different to pythons ConfigParser. We need to use
+    # config.py to ensure any changes to the way rose meta data
+    # is treated are picked up.
+    #
+    # Rose's "config_tree.py" code is used to expand any import
+    # statements in the specified configuration file.
+
+    try:
+        # Load and expand the configuration file
+        CONFIG_NODE = rose.config.load(META_FILENAME)
+        TREE_LOADER = ConfigTreeLoader()
+
+        TREE_LOADER.load(os.path.dirname(META_FILENAME),
+                         os.path.basename(META_FILENAME),
+                         conf_dir_paths=INCLUDE_DIRS,
+                         conf_node=CONFIG_NODE)
+    except ConfigSyntaxError:
+        # Handle exception.
+        print('Unable to load {}'.format(META_FILENAME))
+        quit()
+
+    # Get keys list of all the namelists/members in the
+    # configuration file
+
+    LISTNAMES = []
+    NAMELIST_CONFIG = collections.OrderedDict()
+    NAMELISTS_REGEX = re.compile(
+        r'^\s*namelist\s*:\s*(\w*)\s*(?:=\s*(\S+))?')
+
+    NODE_KEYS = list(filter(NAMELISTS_REGEX.match,
+                            CONFIG_NODE.get_value().keys()))
+    NODE_KEYS.sort()
+
+    REQUIRED_PROPERTIES = ['type',
+                           'length',
+                           'values',
+                           'expression',
+                           'bounds',
+                           'string_length',
+                           'kind']
+
+    # Extract require namelists and member
+    # properties to build namelist loaders.
+    for key in NODE_KEYS:
+
+        match = NAMELISTS_REGEX.match(key)
+        node = match.group(0)
+        namelist = match.group(1)
+        member = match.group(2)
+
+        if namelist:
+            if not member:
+                LISTNAMES.append(namelist)
+                NAMELIST_CONFIG[namelist] = {}
+                continue
+
+            else:
+                if namelist not in NAMELIST_CONFIG.keys():
+                    message = (
+                        'namelist:' + namelist
+                        + ' has no section in metadata configuration file')
+                    raise RosePickerException(message)
+                else:
+
+                    NAMELIST_CONFIG[namelist][member] = \
+                        {'section_key': node}
+
+                    member_node = CONFIG_NODE.get([node])
+                    member_node_keys = member_node.get_value().keys()
+                    for i in REQUIRED_PROPERTIES:
+                        if i in member_node_keys:
+                            member_prop = member_node.get([i])
+                            member_prop = member_prop.get_value()
+                            NAMELIST_CONFIG[namelist][member][i] \
+                                = member_prop
+
+    BASENAME = os.path.basename(META_FILENAME)
+    BASENAME = BASENAME.split('.')
+    NML_CONFIG_FILENAME = '{}.pkl'.format(BASENAME[0])
+
+    OUTPUT = open('{}/{}'.format(
+        OUTPUT_DIR, NML_CONFIG_FILENAME), 'wb')
+    pickle.dump(NAMELIST_CONFIG, OUTPUT, -1)
+    OUTPUT.close()
+
+    OUTPUT = open('{}/config_namelists.txt'.format(OUTPUT_DIR), 'w')
+
+    for listname in LISTNAMES:
+        OUTPUT.write('{}\n'.format(listname))
+
+    OUTPUT.close()
