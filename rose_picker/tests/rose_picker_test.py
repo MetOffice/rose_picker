@@ -11,20 +11,21 @@ import os
 from subprocess import check_output, CalledProcessError, STDOUT
 
 
-picker_exe = './rose_picker'
+PICKER_EXE = './rose_picker'
+
 
 ###############################################################################
 class RosePickerTest(unittest.TestCase):
 
     ##########################################################################
     def setUp(self):
-        pass
+        self.test_input_file = ''
 
     ##########################################################################
     def tearDown(self):
         os.remove(self.test_input_file)
-        pass
 
+    ##########################################################################
     def test_no_namelist_for_member(self):
 
         self.test_input_file = './testNoNamelist.conf'
@@ -33,7 +34,7 @@ class RosePickerTest(unittest.TestCase):
 [namelist:kevin=orphan]
 type=integer
 ''')
-        picker_command = "{} {}".format(picker_exe, self.test_input_file)
+        picker_command = "{} {}".format(PICKER_EXE, self.test_input_file)
 
         with self.assertRaises(CalledProcessError) as context:
             check_output(picker_command, shell=True, stderr=STDOUT)
@@ -41,5 +42,3 @@ type=integer
         self.assertIn(
             'namelist:kevin has no section in metadata configuration file',
             context.exception.output)
-
-

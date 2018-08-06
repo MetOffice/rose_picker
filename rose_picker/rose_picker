@@ -87,13 +87,14 @@ if __name__ == '__main__':
                             CONFIG_NODE.get_value().keys()))
     NODE_KEYS.sort()
 
-    REQUIRED_PROPERTIES = ['type',
-                           'length',
-                           'values',
+    REQUIRED_PROPERTIES = ['bounds',
+                           'enumeration',
                            'expression',
-                           'bounds',
+                           'kind',
+                           'length',
                            'string_length',
-                           'kind']
+                           'type',
+                           'values']
 
     # Extract require namelists and member
     # properties to build namelist loaders.
