@@ -20,38 +20,26 @@ from rose.config_tree import ConfigTreeLoader
 class RosePickerException(Exception):
     pass
 
-if __name__ == '__main__':
 
-    PARSER = argparse.ArgumentParser(add_help=False,
+def main():
+
+    parser = argparse.ArgumentParser(add_help=False,
                                      description=__doc__)
-    PARSER.add_argument('-help', '-h', '--help', action='help',
+    parser.add_argument('-help', '-h', '--help', action='help',
                         help='Show this help message and exit')
-    PARSER.add_argument('-directory', metavar='path', default='.',
+    parser.add_argument('-directory', metavar='path', default='.',
                         help='Generated source files are put here.')
-    PARSER.add_argument('-include_dirs', nargs='*',
-                        help='The directories to search for '
-                        'any inherited metadata files')
-    PARSER.add_argument('meta_filename', metavar='description-file',
-                        nargs=1, help='The metadata file to load')
+    parser.add_argument('-include_dirs', action='append',
+                        help='Include directory to list of directories '
+                             'to search for inherited metadata files')
+    parser.add_argument('meta_filename', metavar='description-file',
+                        help='The metadata file to load')
 
-    ARGS = PARSER.parse_args()
+    args = parser.parse_args()
 
-    DESCRIPTION_LIST = []
-
-    META_FILENAME = ARGS.meta_filename[0]
-    INCLUDE_DIRS = ARGS.include_dirs
-    OUTPUT_DIR = ARGS.directory
-
-    '''
-    file_object   : File object which is the opened configuration file.
-    meta_filename : String, Filename of configuration file
-    (including path).
-    include_dir   : List of directory paths to search for configuration
-    files to expand any import statements.
-
-    Configuration files are taken to be the same as the basename given
-    by the argument, meta_filename
-    '''
+    meta_filename = args.meta_filename
+    include_dirs = args.include_dirs
+    output_dir = args.directory
 
     # Load in a config file. This is using Rose's "config.py" code
     # which is different to pythons ConfigParser. We need to use
@@ -63,31 +51,37 @@ if __name__ == '__main__':
 
     try:
         # Load and expand the configuration file
-        CONFIG_NODE = rose.config.load(META_FILENAME)
-        TREE_LOADER = ConfigTreeLoader()
+        config_node = rose.config.load(meta_filename)
+        tree_loader = ConfigTreeLoader()
 
-        TREE_LOADER.load(os.path.dirname(META_FILENAME),
-                         os.path.basename(META_FILENAME),
-                         conf_dir_paths=INCLUDE_DIRS,
-                         conf_node=CONFIG_NODE)
+        tree_loader.load(os.path.dirname(meta_filename),
+                         os.path.basename(meta_filename),
+                         conf_dir_paths=include_dirs,
+                         conf_node=config_node)
+
     except ConfigSyntaxError:
         # Handle exception.
-        print('Unable to load {}'.format(META_FILENAME))
+        if not os.path.isfile(meta_filename):
+            print('File {} does not exist.'.format(meta_filename))
+        else:
+            print('File {} is not a valid rose '
+                  'meta configuration file.'.format(meta_filename))
+
         quit()
+
 
     # Get keys list of all the namelists/members in the
     # configuration file
-
-    LISTNAMES = []
-    NAMELIST_CONFIG = collections.OrderedDict()
-    NAMELISTS_REGEX = re.compile(
+    listnames = []
+    namelist_config = collections.OrderedDict()
+    namelists_regex = re.compile(
         r'^\s*namelist\s*:\s*(\w*)\s*(?:=\s*(\S+))?')
 
-    NODE_KEYS = list(filter(NAMELISTS_REGEX.match,
-                            CONFIG_NODE.get_value().keys()))
-    NODE_KEYS.sort()
+    node_keys = list(filter(namelists_regex.match,
+                            config_node.get_value().keys()))
+    node_keys.sort()
 
-    REQUIRED_PROPERTIES = ['bounds',
+    required_properties = ['bounds',
                            'enumeration',
                            'expression',
                            'kind',
@@ -98,51 +92,52 @@ if __name__ == '__main__':
 
     # Extract require namelists and member
     # properties to build namelist loaders.
-    for key in NODE_KEYS:
+    for key in node_keys:
 
-        match = NAMELISTS_REGEX.match(key)
+        match = namelists_regex.match(key)
         node = match.group(0)
         namelist = match.group(1)
         member = match.group(2)
 
         if namelist:
             if not member:
-                LISTNAMES.append(namelist)
-                NAMELIST_CONFIG[namelist] = {}
+                listnames.append(namelist)
+                namelist_config[namelist] = {}
                 continue
 
+            elif namelist not in namelist_config.keys():
+                message = (
+                    'namelist:' + namelist
+                    + ' has no section in metadata configuration file')
+                raise RosePickerException(message)
+
             else:
-                if namelist not in NAMELIST_CONFIG.keys():
-                    message = (
-                        'namelist:' + namelist
-                        + ' has no section in metadata configuration file')
-                    raise RosePickerException(message)
-                else:
+                namelist_config[namelist][member] = {}
 
-                    NAMELIST_CONFIG[namelist][member] = \
-                        {'section_key': node}
+                member_node = config_node.get([node])
+                member_node_keys = member_node.get_value().keys()
+                for i in required_properties:
+                    if i in member_node_keys:
+                        member_prop = member_node.get([i])
+                        member_prop = member_prop.get_value()
+                        namelist_config[namelist][member][i] \
+                            = member_prop
 
-                    member_node = CONFIG_NODE.get([node])
-                    member_node_keys = member_node.get_value().keys()
-                    for i in REQUIRED_PROPERTIES:
-                        if i in member_node_keys:
-                            member_prop = member_node.get([i])
-                            member_prop = member_prop.get_value()
-                            NAMELIST_CONFIG[namelist][member][i] \
-                                = member_prop
+    basename = os.path.basename(meta_filename).split('.')
+    nml_config_filename = '{}.pkl'.format(basename[0])
 
-    BASENAME = os.path.basename(META_FILENAME)
-    BASENAME = BASENAME.split('.')
-    NML_CONFIG_FILENAME = '{}.pkl'.format(BASENAME[0])
+    output = open('{}/{}'.format(
+        output_dir, nml_config_filename), 'wb')
+    pickle.dump(namelist_config, output, -1)
+    output.close()
 
-    OUTPUT = open('{}/{}'.format(
-        OUTPUT_DIR, NML_CONFIG_FILENAME), 'wb')
-    pickle.dump(NAMELIST_CONFIG, OUTPUT, -1)
-    OUTPUT.close()
+    output = open('{}/config_namelists.txt'.format(output_dir), 'w')
 
-    OUTPUT = open('{}/config_namelists.txt'.format(OUTPUT_DIR), 'w')
+    for listname in listnames:
+        output.write('{}\n'.format(listname))
 
-    for listname in LISTNAMES:
-        OUTPUT.write('{}\n'.format(listname))
+    output.close()
 
-    OUTPUT.close()
+
+if __name__ == '__main__':
+    main()

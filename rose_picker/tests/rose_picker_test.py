@@ -8,7 +8,10 @@
 
 import unittest
 import os
-from subprocess import check_output, CalledProcessError, STDOUT
+import collections
+import pickle
+import tempfile
+from subprocess import check_output, Popen, CalledProcessError, STDOUT
 
 
 PICKER_EXE = './rose_picker'
@@ -19,26 +22,90 @@ class RosePickerTest(unittest.TestCase):
 
     ##########################################################################
     def setUp(self):
-        self.test_input_file = ''
+        self.nml_config_file = None
 
     ##########################################################################
     def tearDown(self):
-        os.remove(self.test_input_file)
+        if self.nml_config_file:
+            os.remove(self.nml_config_file)
+        if os.path.isfile('config_namelists.txt'):
+            os.remove('config_namelists.txt')
 
     ##########################################################################
     def test_no_namelist_for_member(self):
 
-        self.test_input_file = './testNoNamelist.conf'
-        with open(self.test_input_file, 'w+') as config_file:
-            config_file.write('''
+        input_file = tempfile.NamedTemporaryFile()
+        input_file.write('''
 [namelist:kevin=orphan]
 type=integer
 ''')
-        picker_command = "{} {}".format(PICKER_EXE, self.test_input_file)
+        input_file.seek(0)
+        picker_command = "{} {}".format(PICKER_EXE, input_file.name)
 
         with self.assertRaises(CalledProcessError) as context:
             check_output(picker_command, shell=True, stderr=STDOUT)
 
+        input_file.close()
+
         self.assertIn(
             'namelist:kevin has no section in metadata configuration file',
             context.exception.output)
+
+    ##########################################################################
+    def test_good_picker(self):
+
+        input_file = tempfile.NamedTemporaryFile()
+        input_file.write('''
+[namelist:aerial]
+
+[namelist:aerial=fred]
+type=real
+
+[namelist:aerial=wilma]
+type=real
+length=:
+!bounds=source:constants_mod=FUDGE
+
+[namelist:aerial=betty]
+type=logical
+length=:
+!bounds=fred
+
+[namelist:aerial=dino]
+type=integer
+length=:
+!bounds=namelist:sugar=TABLET
+
+[namelist:aerial=bambam]
+type=integer
+length=:
+''')
+        input_file.seek(0)
+
+        picker_command = "{} {}".format(PICKER_EXE, input_file.name)
+        out = Popen(picker_command, shell=True)
+        out.wait()
+        input_file.close()
+
+        self.nml_config_file = \
+            '{}.pkl'.format(os.path.basename(input_file.name))
+
+        config_file = open(self.nml_config_file, 'rb')
+        result = pickle.load(config_file)
+        config_file.close()
+
+        good_result = collections.OrderedDict(
+            {'aerial': {'dino':   {'length': ':',
+                                   'type':   'integer',
+                                   'bounds': 'namelist:sugar=TABLET'},
+                        'wilma':  {'length': ':',
+                                   'type':   'real',
+                                   'bounds': 'source:constants_mod=FUDGE'},
+                        'betty':  {'length': ':',
+                                   'type':   'logical',
+                                   'bounds': 'fred'},
+                        'bambam': {'length': ':',
+                                   'type':   'integer'},
+                        'fred':   {'type':   'real'}}})
+
+        self.assertEqual(good_result, result)
