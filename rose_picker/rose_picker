@@ -10,8 +10,7 @@ import argparse
 import os.path
 import collections
 import re
-# import json
-import pickle
+import json
 
 import rose
 from rose.config import ConfigSyntaxError
@@ -126,20 +125,14 @@ def main():
 
     basename = os.path.basename(meta_filename).split('.')
 
-#   # Output as .json file
-#   nml_config_filename = '{}.json'.format(basename[0])
-#   output = open('{}/{}'.format(
-#       output_dir, nml_config_filename), 'wb')
-#   json.dump(namelist_config, output, indent=4, encoding='ascii')
-#   output.close()
-
-    # Output as .pkl file
-    nml_config_filename = '{}.pkl'.format(basename[0])
+    # Output as .json file
+    nml_config_filename = '{}.json'.format(basename[0])
     output = open('{}/{}'.format(
         output_dir, nml_config_filename), 'wb')
-    pickle.dump(namelist_config, output, -1)
+    json.dump(namelist_config, output, indent=4, encoding='ascii')
     output.close()
 
+    # Write out namelists in configuration
     output = open('{}/config_namelists.txt'.format(output_dir), 'w')
 
     for listname in listnames:

@@ -10,7 +10,7 @@ import unittest
 import os
 import collections
 import pickle
-# import json
+import json
 import tempfile
 from subprocess import check_output, Popen, CalledProcessError, STDOUT
 
@@ -88,19 +88,13 @@ length=:
         out.wait()
         input_file.close()
 
-        # pickle file
+        # json file
         self.nml_config_file = \
-            '{}.pkl'.format(os.path.basename(input_file.name))
-        config_file = open(self.nml_config_file, 'rb')
-        result = pickle.load(config_file)
-        config_file.close()
+            '{}.json'.format(os.path.basename(input_file.name))
 
-#       # json file
-#       self.nml_config_file = \
-#           '{}.json'.format(os.path.basename(input_file.name))
-#       config_file = open(self.nml_config_file, 'rb')
-#       result = json.load(config_file)
-#       config_file.close()
+        config_file = open(self.nml_config_file, 'rb')
+        result = json.load(config_file)
+        config_file.close()
 
         good_result = collections.OrderedDict(
             {'aerial': {'dino':   {'length': ':',
