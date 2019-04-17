@@ -20,6 +20,8 @@
 # -----------------------------------------------------------------------------
 """Rose configuration directory inheritance."""
 
+from __future__ import absolute_import
+from __future__ import print_function
 import os
 from rose.c3 import mro
 from rose.config import ConfigNode, ConfigLoader
@@ -194,9 +196,9 @@ class _Test(object):
         """Test if actual == expect."""
         self.test_num += 1
         if actual == expect:
-            print "ok %d - %s" % (self.test_num, key)
+            print("ok %d - %s" % (self.test_num, key))
         else:
-            print "not ok %d - %s" % (self.test_num, key)
+            print("not ok %d - %s" % (self.test_num, key))
 
     def test1(self):
         """Test: configuration file only."""
@@ -260,7 +262,7 @@ type=grilled
 echo "Making breakfast $@"
 """)
         handle.close()
-        os.chmod("t2/bin/make-breakfast", 0755)
+        os.chmod("t2/bin/make-breakfast", 0o755)
         os.mkdir("t2/etc")
         for key, val in (
                 ("sausage", "10 fat sausages"),
@@ -462,7 +464,7 @@ type=grilled
 
     def run(self):
         """Run the tests."""
-        print self.test_plan
+        print(self.test_plan)
 
         cwd = os.getcwd()
         work_dir = mkdtemp()

@@ -90,6 +90,7 @@ What about the standard library ConfigParser? Well, it is problematic:
 
 """
 
+from __future__ import absolute_import
 import copy
 import os.path
 import re
@@ -97,6 +98,7 @@ from rose.env import env_var_escape
 import shlex
 import sys
 from tempfile import NamedTemporaryFile
+import six
 
 
 CHAR_ASSIGN = "="
@@ -1069,8 +1071,7 @@ class ConfigDumper(object):
             for comment in root.comments:
                 handle.write(self._comment_format(comment))
             blank = "\n"
-        root_keys = root.value.keys()
-        root_keys.sort(sort_sections)
+        root_keys = sorted(root.value.keys(), sort_sections)
         root_option_keys = []
         section_keys = []
         for key in root_keys:
@@ -1097,8 +1098,7 @@ class ConfigDumper(object):
                 "state": section_node.state,
                 "key": section_key,
                 "close": CHAR_SECTION_CLOSE})
-            keys = section_node.value.keys()
-            keys.sort(sort_option_items)
+            keys = sorted(section_node.value.keys(), sort_option_items)
             for key in keys:
                 value = section_node.value[key]
                 self._string_node_dump(key, value, handle, env_escape_ok)
@@ -1560,8 +1560,8 @@ def sort_element(elem_1, elem_2):
 
 def sort_settings(setting_1, setting_2):
     """Sort sections and options, by numeric element if possible."""
-    if (not isinstance(setting_1, basestring) or
-            not isinstance(setting_2, basestring)):
+    if (not isinstance(setting_1, six.string_types) or
+            not isinstance(setting_2, six.string_types)):
         return cmp(setting_1, setting_2)
     match_1 = REC_SETTING_ELEMENT.match(setting_1)
     match_2 = REC_SETTING_ELEMENT.match(setting_2)

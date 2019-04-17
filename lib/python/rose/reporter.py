@@ -19,12 +19,14 @@
 # -----------------------------------------------------------------------------
 """Reporter for diagnostic messages."""
 
-import Queue
+from __future__ import absolute_import
+import six.moves.queue
 
 import multiprocessing
 import sys
 
 import time
+import six
 
 
 class Reporter(object):
@@ -172,10 +174,10 @@ class Reporter(object):
                     msg = message
 
                 try:
-                    msg = unicode(msg)
+                    msg = six.text_type(msg)
                 except UnicodeDecodeError:
                     try:
-                        msg = unicode(msg, 'utf-8')
+                        msg = six.text_type(msg, 'utf-8')
                     except TypeError:
                         msg = str(msg)
                     except UnicodeEncodeError:
@@ -312,7 +314,7 @@ class ReporterContextQueue(ReporterContext):
             message = self._messages_pending[0]
             try:
                 self.queue.put(message, block=False)
-            except Queue.Full:
+            except six.moves.queue.Full:
                 break
             else:
                 del self._messages_pending[0]
