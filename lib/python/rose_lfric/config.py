@@ -22,9 +22,9 @@
 .. testsetup:: *
 
     import os
-    from rose.config import *
+    from rose_lfric.config import *
 
-.. testcleanup:: rose.config
+.. testcleanup:: rose_lfric.config
 
     try:
         os.remove('config.conf')
@@ -68,15 +68,15 @@ Synopsis:
 
 Classes:
     .. autosummary::
-        rose.config.ConfigNode
-        rose.config.ConfigNodeDiff
-        rose.config.ConfigDumper
-        rose.config.ConfigLoader
+        rose_lfric.config.ConfigNode
+        rose_lfric.config.ConfigNodeDiff
+        rose_lfric.config.ConfigDumper
+        rose_lfric.config.ConfigLoader
 
 Functions:
     .. autosummary::
-       rose.config.load
-       rose.config.dump
+       rose_lfric.config.load
+       rose_lfric.config.dump
 
 Limitations:
     - The loader does not handle trailing comments.
@@ -94,7 +94,7 @@ from __future__ import absolute_import
 import copy
 import os.path
 import re
-from rose.env import env_var_escape
+from rose_lfric.env import env_var_escape
 import shlex
 import sys
 from tempfile import NamedTemporaryFile
@@ -1224,7 +1224,7 @@ class ConfigLoader(object):
                   pairs. Only returned if return_config_map is True.
 
         Examples:
-            .. testcleanup:: rose.config.ConfigLoader.load_with_opts
+            .. testcleanup:: rose_lfric.config.ConfigLoader.load_with_opts
 
                 try:
                     os.remove('config.conf')

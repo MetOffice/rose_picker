@@ -23,8 +23,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import os
-from rose.c3 import mro
-from rose.config import ConfigNode, ConfigLoader
+from rose_lfric.c3 import mro
+from rose_lfric.config import ConfigNode, ConfigLoader
 import shlex
 
 
@@ -94,7 +94,7 @@ class ConfigTreeLoader(object):
         conf_dir_paths -- A list of directories to locate relative paths to
                           configurations.
         opt_keys -- Optional configuration keys.
-        conf_node -- A rose.config.ConfigNode to extend, or None to use a
+        conf_node -- A rose_lfric.config.ConfigNode to extend, or None to use a
                      fresh one.
         no_ignore -- If True, skip loading ignored config settings.
 
@@ -486,7 +486,7 @@ type=grilled
 
 if __name__ == "__main__":
     # These modules are only required for running the self tests.
-    from rose.config import ConfigDumper
+    from rose_lfric.config import ConfigDumper
     from StringIO import StringIO
     from shutil import rmtree
     from tempfile import mkdtemp

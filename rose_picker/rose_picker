@@ -26,9 +26,9 @@ import collections
 import re
 import json
 
-import rose
-from rose.config import ConfigSyntaxError
-from rose.config_tree import ConfigTreeLoader
+import rose_lfric
+from rose_lfric.config import ConfigSyntaxError
+from rose_lfric.config_tree import ConfigTreeLoader
 
 
 class RosePickerException(Exception):
@@ -65,7 +65,7 @@ def main():
 
     try:
         # Load and expand the configuration file
-        config_node = rose.config.load(meta_filename)
+        config_node = rose_lfric.config.load(meta_filename)
         tree_loader = ConfigTreeLoader()
 
         tree_loader.load(os.path.dirname(meta_filename),

@@ -27,7 +27,7 @@ environment variables are left unchanged.
 from __future__ import absolute_import
 import os
 import re
-from rose.reporter import Event
+from rose_lfric.reporter import Event
 
 
 # _RE_DEFAULT = re.compile(r"""
