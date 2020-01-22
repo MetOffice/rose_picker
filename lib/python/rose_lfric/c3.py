@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # -----------------------------------------------------------------------------
-# (C) British Crown Copyright 2012-8 Met Office.
+# Copyright (C) 2012-2019 British Crown (Met Office) & Contributors.
 #
 # This file is part of Rose, a framework for meteorological suites.
 #
@@ -23,8 +23,6 @@
 See http://www.python.org/download/releases/2.3/mro/ for detail.
 
 """
-
-from __future__ import print_function
 
 
 class MROError(Exception):

@@ -1,6 +1,7 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # -----------------------------------------------------------------------------
-# (C) British Crown Copyright 2012-8 Met Office.
+# Copyright (C) 2012-2019 British Crown (Met Office) & Contributors.
 #
 # This file is part of Rose, a framework for meteorological suites.
 #
@@ -19,14 +20,9 @@
 # -----------------------------------------------------------------------------
 """Reporter for diagnostic messages."""
 
-from __future__ import absolute_import
-import six.moves.queue
 
-import multiprocessing
 import sys
-
 import time
-import six
 
 
 class Reporter(object):
@@ -137,6 +133,8 @@ class Reporter(object):
         arguments and return its result instead.
 
         """
+        if isinstance(message, bytes):
+            message = message.decode()
         if callable(self.event_handler):
             return self.event_handler(message, kind, level, prefix, clip)
 
@@ -155,7 +153,7 @@ class Reporter(object):
         if level is None:
             level = self.DEFAULT
         msg = None
-        for key, context in self.contexts.items():
+        for key, context in list(self.contexts.items()):
             if context.is_closed():
                 self.contexts.pop(key)  # remove contexts with closed handles
                 continue
@@ -172,19 +170,9 @@ class Reporter(object):
                     msg = message()
                 else:
                     msg = message
-
-                try:
-                    msg = six.text_type(msg)
-                except UnicodeDecodeError:
-                    try:
-                        msg = six.text_type(msg, 'utf-8')
-                    except TypeError:
-                        msg = str(msg)
-                    except UnicodeEncodeError:
-                        pass
+                msg = str(msg)
 
             msg_lines = self.format_msg(msg, context.verbosity, prefix, clip)
-
             for line in msg_lines:
                 context.write(line)
 
@@ -254,9 +242,11 @@ class ReporterContext(object):
     def write(self, message):
         """Write the message to the context's handle."""
         try:
-            return self.handle.write(message.encode("utf-8"))
-        except UnicodeDecodeError:
+            return self.handle.buffer.write(message.encode("utf-8"))
+        except TypeError:
             return self.handle.write(message)
+        except AttributeError:
+            return self.handle.write(message.encode('UTF-8'))
 
     def _tty_colour_err(self, str_):
         """Colour error string for terminal."""
@@ -267,57 +257,6 @@ class ReporterContext(object):
         except AttributeError:
             pass
         return str_
-
-
-class ReporterContextQueue(ReporterContext):
-
-    """A context for the reporter object.
-
-    It has the following attributes:
-    kind:
-        The message kind to report to this context.
-        (Reporter.KIND_ERR, Reporter.KIND_ERR or None.)
-    verbosity:
-        The verbosity of this context.
-    queue:
-        The multiprocessing.Queue.
-    prefix:
-        The default message prefix (str or callable).
-
-    """
-
-    def __init__(self,
-                 kind=None,
-                 verbosity=Reporter.DEFAULT,
-                 queue=None,
-                 prefix=None):
-        ReporterContext.__init__(self, kind, verbosity, None, prefix)
-        if queue is None:
-            queue = multiprocessing.Manager().Queue()
-        self.queue = queue
-        self.closed = False
-        self._messages_pending = []
-
-    def close(self):
-        self._send_pending_messages()
-        self.closed = True
-
-    def is_closed(self):
-        return self.closed
-
-    def write(self, message):
-        self._messages_pending.append(message)
-        self._send_pending_messages()
-
-    def _send_pending_messages(self):
-        while self._messages_pending:
-            message = self._messages_pending[0]
-            try:
-                self.queue.put(message, block=False)
-            except six.moves.queue.Full:
-                break
-            else:
-                del self._messages_pending[0]
 
 
 class Event(object):

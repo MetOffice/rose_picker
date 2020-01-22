@@ -1,6 +1,7 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # ----------------------------------------------------------------------------
-# (C) British Crown Copyright 2012-8 Met Office.
+# Copyright (C) 2012-2019 British Crown (Met Office) & Contributors.
 #
 # This file is part of Rose, a framework for meteorological suites.
 #
@@ -24,7 +25,6 @@ environment variables are left unchanged.
 
 """
 
-from __future__ import absolute_import
 import os
 import re
 from rose_lfric.reporter import Event
@@ -115,7 +115,7 @@ def env_export(key, value, event_handler=None):
         # N.B. Should be safe, because the list of environment variables is
         #      normally quite small.
         _EXPORTED_ENVS[key] = value
-        os.environ[key] = value
+        os.environb[key.encode('UTF-8')] = value.encode('UTF-8')
         if callable(event_handler):
             event_handler(EnvExportEvent(key, value))
 
@@ -149,7 +149,10 @@ def env_var_process(text, unbound=None, match_mode=None):
 
     """
     ret = ""
-    tail = text
+    try:
+        tail = text.decode()
+    except AttributeError:
+        tail = text
     while tail:
         match = _MATCH_MODES[match_mode].match(tail)
         if match:
@@ -163,7 +166,7 @@ def env_var_process(text, unbound=None, match_mode=None):
                 else:
                     raise UnboundEnvironmentVariableError(groups["name"])
             ret += (groups["head"] +
-                    groups["escape"][0:len(groups["escape"]) / 2] +
+                    groups["escape"][0:len(groups["escape"]) // 2] +
                     substitute)
             tail = groups["tail"]
         else:
@@ -176,36 +179,3 @@ def contains_env_var(text, match_mode=None):
     """Check if a string contains unescaped $NAME and/or ${NAME} syntax."""
     match = _MATCH_MODES[match_mode].match(text)
     return (match and len(match.groupdict()["escape"]) % 2 == 0)
-
-
-if __name__ == "__main__":
-    import unittest
-
-    class _TestEnvExport(unittest.TestCase):
-        """Test "env_export" function."""
-
-        def test_report_new(self):
-            """Ensure that env_export only reports 1st time or on change."""
-            events = []
-            env_export("FOO", "foo", events.append)
-            env_export("FOO", "foo", events.append)
-            env_export("FOO", "food", events.append)
-            env_export("FOO", "foot", events.append)
-            env_export("FOO", "foot", events.append)
-            event_args = [event.args[1] for event in events]
-            self.assertEqual(event_args, ["foo", "food", "foot"], "events")
-
-        def test_report_old(self):
-            """Ensure that env_export only reports 1st time or on change."""
-            events = []
-            os.environ["BAR"] = "bar"
-            env_export("BAR", "bar", events.append)
-            env_export("BAR", "bar", events.append)
-            env_export("BAR", "bar", events.append)
-            env_export("BAR", "barley", events.append)
-            env_export("BAR", "barley", events.append)
-            env_export("BAR", "barber", events.append)
-            event_args = [event.args[1] for event in events]
-            self.assertEqual(event_args, ["bar", "barley", "barber"], "events")
-
-    unittest.main()

@@ -1,6 +1,7 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # -----------------------------------------------------------------------------
-# (C) British Crown Copyright 2012-8 Met Office.
+# Copyright (C) 2012-2019 British Crown (Met Office) & Contributors.
 #
 # This file is part of Rose, a framework for meteorological suites.
 #
@@ -127,3 +128,5 @@ FILE_VAR_SOURCE = "source"
 
 # Paths in the Rose distribution.
 FILEPATH_README = "README.md"
+
+__version__ = "2.0a1"

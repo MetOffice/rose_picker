@@ -142,8 +142,8 @@ def main():
     # Output as .json file
     nml_config_filename = '{}.json'.format(basename[0])
     output = open('{}/{}'.format(
-        output_dir, nml_config_filename), 'wb')
-    json.dump(namelist_config, output, indent=4, encoding='ascii')
+        output_dir, nml_config_filename), 'wt')
+    json.dump(namelist_config, output, indent=4, ensure_ascii=True)
     output.close()
 
     # Write out namelists in configuration

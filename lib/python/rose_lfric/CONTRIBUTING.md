@@ -39,10 +39,14 @@ below:
 * Jon Seddon (Met Office, UK)
 * Harry Shepherd (Met Office, UK)
 * Matt Shin (Met Office, UK)
+* Tomasz Trzeciak (Met Office, UK)
 * Stuart Whitehouse (Met Office, UK)
 * Steve Wardle (Met Office, UK)
 * Scott Wales (ARC Centre of Excellence for Climate Systems Science, Australia)
 * Thomas Coleman (Bureau of Meteorology, Australia)
+* Bruno P. Kinoshita (National Institute of Water and Atmospheric Research, New Zealand)
+* Tim Pillinger (Met Office, UK)
+* Mel Hall (Met Office, UK)
 
 (All contributors are identifiable with email addresses in the version control
 logs or otherwise.)
