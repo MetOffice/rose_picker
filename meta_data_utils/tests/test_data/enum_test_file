@@ -1,0 +1,19 @@
+!!-----------------------------------------------------------------------------
+! (c) Crown copyright 2020 Met Office. All rights reserved.
+! The file LICENCE, distributed with this code, contains details of the terms
+! under which the code may be used.
+!------------------------------------------------------------------------------
+!
+!> @brief ENUM containing values for testing purposes
+
+
+module test_enum_mod
+
+  implicit none
+  !> THE NUMBERS IN THIS FILE ARE ARBITARY.
+  !> DO NOT ATTEMPT TO USE THEM IN ANY CODE
+  enum, bind(c)
+    enumerator :: ONE = 1,                          &
+                  TWO = 2
+  end enum
+end module test_enum_mod
