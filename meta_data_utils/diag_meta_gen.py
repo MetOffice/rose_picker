@@ -172,6 +172,28 @@ def add_rose_macro(root_dir: str, rose_suite_dir: str) -> None:
     shutil.copy(macro_source, macro_dest)
 
 
+def add_rose_widget(root_dir: str, rose_suite_dir: str) -> None:
+    """Copies vertical dimension widget files into rose suite
+    :param root_dir: The path to the root directory of the GPL-utilities source
+    :param rose_suite_dir: The path to the output Rose suite
+    """
+    LOGGER.info("Adding rose widget")
+    source_folder = root_dir + "/meta_data_utils/widget/"
+    dest_folder = rose_suite_dir + "/meta/lib/python/widget/"
+    os.makedirs(os.path.abspath(dest_folder), exist_ok=True)
+
+    files = ["vertical_dimension_choice.py", "vertical_dimension_util.py"]
+    exported = True
+    for file in files:
+        shutil.copy(source_folder + file, dest_folder + file)
+        if not os.path.isfile(dest_folder + file):
+            exported = False
+            LOGGER.error("Failed to copy file from %s",
+                         source_folder + file)
+    if not exported:
+        raise OSError("File export failed")
+
+
 def run():
     """Defines variables for file output and runs the parser"""
 
@@ -219,7 +241,9 @@ def run():
                     exist_ok=True)
 
         create_rose_meta(meta_data, suite_dir, metadata_file_name)
-        add_rose_macro(get_gpl_utilities_root_dir(), suite_dir)
+        gpl_root_dir = get_gpl_utilities_root_dir()
+        add_rose_macro(gpl_root_dir, suite_dir)
+        add_rose_widget(gpl_root_dir, suite_dir)
         write_json_meta(meta_data, suite_dir)
 
 

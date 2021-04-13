@@ -63,6 +63,36 @@ title={section.title}"""
             rose_meta += f"""
 [field_config:{section.name}:{group.name}]
 title={group.title}"""
+            model_levels = set()
+            for field in group.fields.values():
+                if field.vertical_dimension:
+                    if "top_arg" in field.vertical_dimension:
+                        model_levels.add(field.vertical_dimension["top_arg"])
+                    if "bottom_arg" in field.vertical_dimension:
+                        model_levels.add(
+                                field.vertical_dimension["bottom_arg"])
+            rose_meta += f"""
+[field_config:{section.name}:{group.name}=model_levels_for_group]
+title=Model Levels used by this group
+description=Vertical dimensions must define these levels to be valid
+values=
+"""
+            for model_level in model_levels:
+                rose_meta += "            " + model_level + os.linesep
+
+            rose_meta += f"""
+sort-key=01
+compulsory=true
+"""
+            rose_meta += f"""
+[field_config:{section.name}:{group.name}=vertical_dimension_for_group]
+title=Vertical dimension used by this group
+description=If you have edited the vertical dimensions please restart the GUI
+            to pick up the changes to the rose-app.conf file
+widget[rose-config-edit]=vertical_dimension_choice.VertDimWidget
+sort-key=02
+compulsory=true
+"""
 
             for field in group.fields.values():
                 rose_meta += f"""
@@ -80,6 +110,10 @@ help=Unit of Measure: {field.units}
                 if field.vertical_dimension:
                     attribute_string = f"    =vertical_dimension:{os.linesep}"
                     for key, value in field.vertical_dimension.items():
+                        if key is "top_arg":
+                            key = "top_level"
+                        if key is "bottom_arg":
+                            key = "bottom_level"
                         attribute_string += f"       ={key}: " \
                                             f"{str(value)}{os.linesep}"
 
@@ -93,15 +127,17 @@ help=Unit of Measure: {field.units}
                                                 f"{str(value)}{os.linesep}"
 
                     rose_meta += attribute_string
+                    # Formats the description, adding newlines every 100 chars
+                line_sep = "\n           "
+                rose_meta += f"""
+description={line_sep.join(wrap(field.description,width=100))}
+           =For more information on {field.item_title}, see the help text
+"""
 
                 rose_meta += f"""
-description={wrap(field.description, width=100)}
-           =For more information on {field.item_title}, see the help text
-
 [field_config:{section.name}:{group.name}={field.unique_id}__checksum]
 type=boolean
-title=Enable Checksum for {field.item_title} checksum
-compulsory=true
+title=Enable Checksum for {field.item_title}
 """
 
     rose_meta = add_file_meta(meta_data, rose_meta)
