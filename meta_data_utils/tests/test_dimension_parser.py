@@ -80,6 +80,20 @@ def test_parse_non_spatial_dimension(caplog):
     Test that non-spatial-dimensions are correctly parsed when declared using
     axis- or label-definitions
     """
+
+    expected_non_spatial_dims = [
+            {"name": "test_axis_non_spatial_dimension",
+             "type": "axis_definition",
+             "help": "test_axis_non_spatial_dimension help text",
+             "axis_definition": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+             "units": "1"},
+            {"name": "test_tiles",
+             "type": "label_definition",
+             "help": "test_tiles help text",
+             "label_definition": ['test_value_1', 'test_value_2',
+                                  'test_value_3']}
+    ]
+
     reader = FortranFileReader(TEST_DIR +
                                "/non_spatial_dimension_test_data.f90",
                                ignore_comments=True)
@@ -93,13 +107,10 @@ def test_parse_non_spatial_dimension(caplog):
 
                 for array in walk(parameter.children,
                                   types=Section_Subscript_List):
-                    key, value = parse_non_spatial_dimension(array)
-                    non_spatial_dimensions.append((key, value))
+                    non_spatial_dim = parse_non_spatial_dimension(array)
+                    non_spatial_dimensions.append(non_spatial_dim)
 
-    assert non_spatial_dimensions == \
-        [('test_axis_non_spatial_dimension',
-          ['1', '2', '3', '4', '5', '6', '7', '8', '9']),
-         ("test_tiles", ['test_value_1', 'test_value_2', 'test_value_3'])]
+    assert non_spatial_dimensions == expected_non_spatial_dims
 
 
 def test_parse_non_spatial_dimension_no_name(caplog):

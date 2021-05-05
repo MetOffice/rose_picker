@@ -22,6 +22,8 @@ module non_spatial_dimension_test_data
   !> Only import the levels that you will actually be using
   use levels_enum_mod,                only: BOTTOM_ATMOSPHERIC_LEVEL, &
                                             TOP_ATMOSPHERIC_LEVEL
+  use non_spatial_dimension_mod,      only: NUMERICAL, &
+                                            CATEGORICAL
   use positive_enum_mod,              only: POSITIVE_UP
   use field_synonyms_enum_mod,        only: AMIP, GRIB, CF, CMIP6, STASH
 
@@ -74,7 +76,10 @@ contains
         ],&
       non_spatial_dimension = [non_spatial_dimension_type( &
               dimension_name = "test_axis_non_spatial_dimension", &
-              axis_definition = [real(r_def) :: 1,2,3,4,5,6,7,8,9])], &
+              dimension_category = NUMERICAL, &
+              help_text = "test_axis_non_spatial_dimension help text", &
+              axis_definition = [real(r_def) :: 1,2,3,4,5,6,7,8,9], &
+              non_spatial_units = '1')], &
       misc_meta_data = [misc_meta_data_type("positive","eastwards")])
 
         self%test_2 = field_meta_data_type(&
@@ -101,6 +106,8 @@ contains
             field_synonym_type(CMIP6, "ua")], &
       non_spatial_dimension = [non_spatial_dimension_type( &
             dimension_name = "test_tiles", &
+            dimension_category = CATEGORICAL, &
+            help_text = "test_tiles help text", &
             label_definition = [character(str_short) :: 'test_value_1', &
                                                         'test_value_2', &
                                                         'test_value_3'])])

@@ -22,9 +22,10 @@ declarations in LFRic meta data
 e.g. model_height_dimension(top=TOP_WET_LEVEL)"""
 import logging
 import re
+from typing import Dict
 
 from fparser.two.Fortran2003 import Else_Stmt, \
-    If_Then_Stmt, Structure_Constructor_2
+    If_Then_Stmt, Structure_Constructor_2, Section_Subscript_List
 from fparser.two.parser import ParserFactory
 from fparser.two.utils import walk
 
@@ -125,32 +126,47 @@ def translate_vertical_dimension(dimension_declaration):
     return parsed_definition
 
 
-def parse_non_spatial_dimension(non_spatial_dimension):
+def parse_non_spatial_dimension(non_spatial_dimension: Section_Subscript_List)\
+            -> Dict:
     """Takes an fparser object (that contains non_spatial_dimension data)
     and returns that data in a dictionary
     :param non_spatial_dimension:
-    :return dict:"""
-    name = None
-    definition = []
+    :return definition:"""
+    definition = {}
+    types = {"NUMERICAL": "axis_definition",
+             "CATEGORICAL": "label_definition"}
 
     for attribute in walk(non_spatial_dimension,
                           types=Structure_Constructor_2):
         if attribute.children[0].string == "dimension_name":
-            name = attribute.children[1].string[1:-1]
+            definition.update({"name": attribute.children[1].string[1:-1]})
+
+        elif attribute.children[0].string == "dimension_category":
+            definition.update({"type": types[attribute.children[1].string]})
 
         elif attribute.children[0].string == "label_definition":
+            labels = []
             for item in attribute.children[1].children[1].children[1].children:
-                definition.append(item.string[1:-1])
+                labels.append(item.string[1:-1])
+            definition.update({"label_definition": labels})
 
         elif attribute.children[0].string == "axis_definition":
+            axis = []
             for item in attribute.children[1].children[1].children[1].children:
-                definition.append(item.string)
+                axis.append(item.string)
+            definition.update({"axis_definition": axis})
+
+        elif attribute.children[0].string == "help_text":
+            definition.update({"help": attribute.children[1].string[1:-1]})
+
+        elif attribute.children[0].string == "non_spatial_units":
+            definition.update({"units": attribute.children[1].string[1:-1]})
         else:
             raise Exception(f"Unrecognised non-spatial-dimension attribute "
                             f"'{attribute.children[0].string}'")
 
-    if not name:
+    if not definition.get("name", None):
         raise Exception("Non-spatial dimension requires 'dimension_name' "
                         "attribute")
 
-    return name, definition
+    return definition

@@ -22,6 +22,7 @@ module non_spatial_dimension_test_data
   !> Only import the levels that you will actually be using
   use levels_enum_mod,                only: BOTTOM_ATMOSPHERIC_LEVEL, &
                                             TOP_ATMOSPHERIC_LEVEL
+  use non_spatial_dimension_mod,      only: NUMERICAL
   use field_synonyms_enum_mod,        only: AMIP, GRIB, CF, CMIP6, STASH
 
   implicit none
@@ -72,6 +73,8 @@ contains
         ],&
       non_spatial_dimension = [non_spatial_dimension_type( &
               axis_definition = [real(r_def) :: 1,2,3,4,5,6,7,8,9])], &
+              dimension_category = NUMERICAL, &
+              help_text = "test_axis_non_spatial_dimension help text", &
       misc_meta_data = [misc_meta_data_type("positive","eastwards")])
 
   end function non_spatial_dimension_test_data__meta_constructor

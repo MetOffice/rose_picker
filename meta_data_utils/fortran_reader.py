@@ -57,6 +57,7 @@ class FortranMetaDataReader:
                                 "levels_enum_mod.f90")
         self.meta_mod_files = None
         self.find_fortran_files()
+        self.non_spatial_dims = {}
 
     def find_fortran_files(self):
         """Recursively looks for fortran files ending with "__meta_mod.f90"
@@ -142,7 +143,8 @@ class FortranMetaDataReader:
                 self.valid_meta_data = False
 
         meta_data = {"sections": sections_dict,
-                     "standard_level_markers": self.levels}
+                     "standard_level_markers": self.levels,
+                     "non_spatial_dimensions": self.non_spatial_dims}
 
         if valid_files == len(self.meta_mod_files):
             self.LOGGER.info("All %i files are valid",
@@ -177,13 +179,16 @@ class FortranMetaDataReader:
                              "bottom",
                              "label_definition",
                              "axis_definition",
-                             "dimension_name"]
+                             "dimension_name",
+                             "dimension_category",
+                             "non_spatial_units",
+                             "help_text"]
             if key in key_blacklist:
                 continue
 
             # Adds the key / value to the Field object
             if not hasattr(field, key):
-                self.logger.error("Unexpected Field Property: %s", key)
+                self.LOGGER.error("Unexpected Field Property: %s", key)
                 valid_field = False
 
             try:
@@ -210,9 +215,51 @@ class FortranMetaDataReader:
 
                         for array in walk(parameter.children,
                                           types=Section_Subscript_List):
-                            key, value = parse_non_spatial_dimension(array)
+
+                            # Get non-spatial dimension information
+                            nsd = parse_non_spatial_dimension(array)
                             field.add_value("non_spatial_dimension",
-                                            {key: value})
+                                            (nsd["name"], nsd))
+
+                            section, group, _ = field.file_name.split("__")
+
+                            # Check if dimension already stored in self
+                            if nsd["name"] in self.non_spatial_dims:
+                                stored_dim = self.non_spatial_dims[
+                                        nsd["name"]].copy()
+                                stored_fields = stored_dim.pop("fields")
+
+                                # If it matches stored dimension, add field to
+                                # list of fields for that dimension
+                                if nsd == stored_dim:
+                                    self.non_spatial_dims[nsd["name"]][
+                                            "fields"].append((section,
+                                                              group,
+                                                              field.unique_id))
+
+                                # If there are discrepancies, throw an error
+                                else:
+                                    for stored_field in stored_fields:
+                                        self.LOGGER.error(
+                                                "Non-spatial dimension '%s' "
+                                                "for field '%s' doesn't match "
+                                                "'%s' for field '%s'",
+                                                nsd["name"], field.unique_id,
+                                                stored_dim["name"],
+                                                stored_field[2])
+                                    raise Exception("Non-spatial dimension "
+                                                    "'{}' for field '{}' "
+                                                    "doesn't match previous "
+                                                    "dimension '{}'".format(
+                                                        nsd["name"],
+                                                        field.unique_id,
+                                                        stored_dim["name"]))
+
+                            # If dimension not stored, add it
+                            else:
+                                self.non_spatial_dims[nsd["name"]] = nsd
+                                self.non_spatial_dims[nsd["name"]]["fields"] =\
+                                    [(section, group, field.unique_id)]
 
                     else:
                         for array in walk(parameter.children,

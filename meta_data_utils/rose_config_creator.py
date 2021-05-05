@@ -123,10 +123,19 @@ help=Unit of Measure: {field.units}
                     attribute_string = f"    =Synonyms:{os.linesep}"
                     for key, values in field.synonyms.items():
                         for value in values:
-                            attribute_string += f"       ={key.value}: " \
+                            attribute_string += f"    =    {key.value}: " \
                                                 f"{str(value)}{os.linesep}"
 
                     rose_meta += attribute_string
+
+                if field.non_spatial_dimension:
+                    attribute_string = f"    =Required non-spatial " \
+                                       f"dimensions:{os.linesep}"
+                    for dimension in field.non_spatial_dimension.values():
+                        attribute_string += f"    =    {dimension['name']}"
+
+                    rose_meta += attribute_string
+
                     # Formats the description, adding newlines every 100 chars
                 line_sep = "\n           "
                 rose_meta += f"""
@@ -143,6 +152,8 @@ title=Enable Checksum for {field.item_title}
     rose_meta = add_file_meta(meta_data, rose_meta)
     rose_meta = add_vertical_meta(rose_meta,
                                   meta_data["standard_level_markers"])
+    rose_meta = add_non_spatial_dims_meta(meta_data["non_spatial_dimensions"],
+                                          rose_meta)
 
     write_file(directory + "meta/", file_name, rose_meta)
 
@@ -171,6 +182,7 @@ def add_file_meta(meta_data: Dict, rose_meta: str) -> str:
     rose_meta += f"""[output_stream]
 duplicate=true
 macro=add_section.AddField, add_section.AddStream
+title=Output Streams
 
 [output_stream=name]
 type=character
@@ -181,13 +193,15 @@ type=character
 [output_stream:field]
 duplicate=true
 macro=add_section.AddField
+title=Fields
 
 [output_stream:field=id]
 values={values}
 value-titles="{titles}"
 
 [output_stream:field=temporal]
-values=instant,average,accumulate,minimum,maximum,once"""
+values=instant,average,accumulate,minimum,maximum,once
+"""
     return rose_meta
 
 
@@ -255,4 +269,57 @@ fail-if=this > len(vertical_dimension=level_definition)-1;
 sort-key=model-levels-{num}"""
         rose_meta += os.linesep
         num += 1
+    return rose_meta
+
+
+def add_non_spatial_dims_meta(non_spatial_dims_meta: Dict,
+                              rose_meta: str) -> str:
+    """Adds the Rose metadata for the non-spatial dimensions.
+
+    :param non_spatial_dims_meta: Dictionary containing metadata describing all
+                                  of the non-spatial dimensions
+    :param rose_meta: String that the non-spatial dimension data will be
+                      appended to
+    :return rose_meta: String with non-spatial dimension data appended to it"""
+
+    dimension_type = {"label_definition": "character",
+                      "axis_definition": "real"}
+    rose_meta += """
+[non_spatial_dimensions]
+title=Non-Spatial Dimensions
+"""
+
+    for dimension in non_spatial_dims_meta.values():
+
+        # Dimension only needs configuring if it doesn't have a definition
+        if dimension.get("label_definition", None) is None and \
+                dimension.get("axis_definition", None) is None:
+
+            rose_meta += f"""
+[non_spatial_dimensions={dimension["name"].lower().replace(" ", "_")}]
+title={dimension["name"]}
+description=Level definition for {dimension["name"]}
+type={dimension_type[dimension["type"]]}
+length=:
+trigger="""
+            # Trigger each field that uses this dimension
+            for (section, group, field) in dimension["fields"]:
+                rose_meta += f"""
+       =field_config:{section}:{group}={field}: len(this) > 0 ;"""
+
+            # Add the help text
+            rose_meta += f"""
+help={dimension["help"]}"""
+            if "units" in dimension:
+                rose_meta += f"""
+    =Units: {dimension["units"]}"""
+
+            # List each field that uses this dimension
+            rose_meta += f"""
+    =Necessary for:"""
+            for _, _, field in dimension["fields"]:
+                rose_meta += f"""
+    =    {field}
+"""
+
     return rose_meta

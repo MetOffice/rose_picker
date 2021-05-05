@@ -24,6 +24,7 @@ TEST_DATA_DIR = os.path.dirname(os.path.abspath(__file__)) + "/test_data"
 meta_types_folder = "/um_physics/source/diagnostics_meta/meta_types/"
 LFRIC_URL = "fcm:lfric.x_tr@head"
 
+
 def setup_lfric():
     """checks out the LFRic trunk which contains required Fortran modules"""
     dir = "trunk"

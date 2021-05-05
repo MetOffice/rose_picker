@@ -53,7 +53,7 @@ class Field:
         self.recommended_interpolation = None
         self.packing = None
         self.vertical_dimension = None
-        self.non_spatial_dimension = None
+        self.non_spatial_dimension = {}
         self.standard_name = None
         self.level_definition = None
         self.misc_meta_data = {}
