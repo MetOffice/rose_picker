@@ -26,8 +26,8 @@ from typing import Dict, Tuple
 from fparser.common.readfortran import FortranFileReader
 from fparser.two.Fortran2003 import Array_Constructor, Assignment_Stmt, \
     Char_Literal_Constant, Enumerator_Def_Stmt, \
-    Level_3_Expr, Part_Ref, Section_Subscript_List, Structure_Constructor, \
-    Structure_Constructor_2
+    Level_3_Expr, Part_Ref, Structure_Constructor, \
+    Component_Spec, Ac_Value_List
 from fparser.two.parser import ParserFactory
 from fparser.two.utils import FparserException, walk
 
@@ -60,15 +60,15 @@ class FortranMetaDataReader:
         self.non_spatial_dims = {}
 
     def find_fortran_files(self):
-        """Recursively looks for fortran files ending with "__meta_mod.f90"
+        """Recursively looks for Fortran files ending with "__meta_mod.f90"
         Initialises the vertical_dimension_definition variable
         Returns a list of file names"""
 
-        self.LOGGER.info("Scanning for fortran meta data files...")
+        self.LOGGER.info("Scanning for Fortran meta data files...")
         self.meta_mod_files = glob.glob(
-                self.__root_dir +
-                '/**/source/diagnostics_meta/**/*__meta_mod.*90',
-                recursive=True)
+            self.__root_dir +
+            '/**/source/diagnostics_meta/**/*__meta_mod.*90',
+            recursive=True)
 
         self.meta_mod_files.sort()
 
@@ -79,17 +79,17 @@ class FortranMetaDataReader:
 
     def read_fortran_files(self) -> Tuple[Dict, bool]:
         """Takes a list of file names (meta_mod.f90 files)
-        Checks for correctness and returns the relevant fortran lines in a list
-        :return Metadata: A dictionary, each key represents a fortran file and
+        Checks for correctness and returns the relevant Fortran lines in a list
+        :return Metadata: A dictionary, each key represents a Fortran file and
         it's value is a list of strings, each element representing a field"""
 
         sections_dict: Dict[str, Section] = {}
         valid_files = 0
-        # Loop over each found fortran file
+        # Loop over each found Fortran file
         for file_path in self.meta_mod_files:
 
             try:
-                # Load the fortran file
+                # Load the Fortran file
 
                 reader = FortranFileReader(file_path, ignore_comments=True)
 
@@ -110,8 +110,8 @@ class FortranMetaDataReader:
 
                 if section_name not in sections_dict:
                     sections_dict.update(
-                            {section_name: Section(name=section_name)}
-                            )
+                        {section_name: Section(name=section_name)}
+                        )
 
                 group = Group(name=group_name, file_name=file_name)
 
@@ -168,7 +168,7 @@ class FortranMetaDataReader:
         field = Field(file_name)
 
         # For every instance argument in object creation
-        for parameter in walk(definition, Structure_Constructor_2):
+        for parameter in walk(definition, Component_Spec):
 
             key = parameter.children[0].string
 
@@ -193,8 +193,9 @@ class FortranMetaDataReader:
 
             try:
                 # For multi line statements - override the key value
-                if isinstance(parameter.parent, Level_3_Expr):
-                    key, value = self.extract_multi_line_statement(parameter)
+                if isinstance(parameter.children[1], Level_3_Expr):
+                    value = self.extract_multi_line_statement(
+                        parameter.children[1])
                     field.add_value(key, value)
 
                 # ENUM's
@@ -206,7 +207,7 @@ class FortranMetaDataReader:
                 elif isinstance(parameter.children[1],
                                 (Part_Ref, Structure_Constructor)):
                     field.add_value(key, translate_vertical_dimension(
-                            parameter.children[1].string))
+                        parameter.children[1].string))
 
                 # For statements with arrays in them (misc_meta_data /
                 # synonyms, non_spatial_dimensions)
@@ -214,9 +215,13 @@ class FortranMetaDataReader:
                     if parameter.children[0].string == "non_spatial_dimension":
 
                         for array in walk(parameter.children,
-                                          types=Section_Subscript_List):
+                                          types=Ac_Value_List):
 
                             # Get non-spatial dimension information
+                            if "non_spatial_dimension" not in \
+                               array.children[0].string:
+                                break
+
                             nsd = parse_non_spatial_dimension(array)
                             field.add_value("non_spatial_dimension",
                                             (nsd["name"], nsd))
@@ -226,27 +231,27 @@ class FortranMetaDataReader:
                             # Check if dimension already stored in self
                             if nsd["name"] in self.non_spatial_dims:
                                 stored_dim = self.non_spatial_dims[
-                                        nsd["name"]].copy()
+                                    nsd["name"]].copy()
                                 stored_fields = stored_dim.pop("fields")
 
                                 # If it matches stored dimension, add field to
                                 # list of fields for that dimension
                                 if nsd == stored_dim:
                                     self.non_spatial_dims[nsd["name"]][
-                                            "fields"].append((section,
-                                                              group,
-                                                              field.unique_id))
+                                        "fields"].append((section,
+                                                          group,
+                                                          field.unique_id))
 
                                 # If there are discrepancies, throw an error
                                 else:
                                     for stored_field in stored_fields:
                                         self.LOGGER.error(
-                                                "Non-spatial dimension '%s' "
-                                                "for field '%s' doesn't match "
-                                                "'%s' for field '%s'",
-                                                nsd["name"], field.unique_id,
-                                                stored_dim["name"],
-                                                stored_field[2])
+                                            "Non-spatial dimension '%s' "
+                                            "for field '%s' doesn't match "
+                                            "'%s' for field '%s'",
+                                            nsd["name"], field.unique_id,
+                                            stored_dim["name"],
+                                            stored_field[2])
                                     raise Exception("Non-spatial dimension "
                                                     "'{}' for field '{}' "
                                                     "doesn't match previous "
@@ -261,21 +266,28 @@ class FortranMetaDataReader:
                                 self.non_spatial_dims[nsd["name"]]["fields"] =\
                                     [(section, group, field.unique_id)]
 
-                    else:
-                        for array in walk(parameter.children,
-                                          types=Section_Subscript_List):
-                            if isinstance(array.children[0],
-                                          Char_Literal_Constant):
-                                # children0.string = "'foo'"
-                                inner_key = array.children[0].string[1:-1]
-                            else:
-                                # children0.string = "foo"
-                                inner_key = array.children[0].string
+                    # Find synonyms
+                    elif parameter.children[0].string == "synonyms":
+                        for entry in \
+                           parameter.children[1].children[1].children:
+                            synonym_type = entry.children[1].children[0].string
+                            value = entry.children[1].children[1].string[1:-1]
+                            field.add_value(key, (synonym_type, value))
 
-                            field.add_value(
-                                    key,
-                                    (inner_key, array.children[1].string[1:-1])
-                                    )
+                    # Find Misc Meta Data
+                    elif parameter.children[0].string == "misc_meta_data":
+                        for entry in \
+                           parameter.children[1].children[1].children:
+                            inner_key = \
+                                entry.children[1].children[0].string[1:-1]
+                            value = entry.children[1].children[1].string[1:-1]
+                            field.add_value(key, (inner_key, value))
+
+                    else:
+                        self.LOGGER.error("Attribute:",
+                                          parameter.children[0].string,
+                                          "is not a valid attribute")
+                        valid_field = False
 
                 else:
 
@@ -284,9 +296,9 @@ class FortranMetaDataReader:
             except Exception as error:
                 if field.unique_id:
                     self.LOGGER.warning(
-                            "Attribute: %s on field: %s in file: "
-                            "%s is invalid: %s",
-                            key, field.unique_id, file_name, error)
+                        "Attribute: %s on field: %s in file: "
+                        "%s is invalid: %s",
+                        key, field.unique_id, file_name, error)
                 else:
                     self.LOGGER.warning("Key: %s in file: %s is invalid: %s ",
                                         key, file_name, error)
@@ -295,31 +307,25 @@ class FortranMetaDataReader:
         return field, valid_field
 
     @staticmethod
-    def extract_multi_line_statement(statement: Level_3_Expr) -> [str, str]:
-        """Accepts a fparser Level_3_Expr object as input. This object
-        represents multi line statements.
+    def extract_multi_line_statement(statement: Level_3_Expr) -> str:
+        """Accepts an fparser Level_3_Expr object as input. This object
+        represents multi-line statements.
         The function reassembles an arbitrary amount of lines into one
         statement
         :param statement: An fparser Level_3_Expr object
-        :return key, value: The key and reassembled value as strings
+        :return value: The reassembled value as string
         """
-        value = ""
-        key = None
-        while isinstance(statement.parent, Level_3_Expr):
-            for item in statement.parent.children:
-
-                if isinstance(item, Structure_Constructor_2):
-                    if not key:
-                        key = item.children[0].string
-
-                    # [1:-1] Removes the quotes from the string
-                    value += item.children[1].string[1:-1]
-
-                elif isinstance(item, Char_Literal_Constant):
-                    value += item.children[0][1:-1]
-            statement = statement.parent
-
-        return key, value
+        for item in statement.children:
+            value = None
+            if isinstance(item, Char_Literal_Constant):
+                value_1 = item.string[1:-1]
+                value_2 = item.parent.children[2].string[1:-1]
+                value = value_1 + value_2
+            elif isinstance(item, Level_3_Expr):
+                value = FortranMetaDataReader.extract_multi_line_statement(
+                    item) + item.parent.children[2].string[1:-1]
+                value = value.replace("\n", " ")
+            return value
 
 
 def read_enum(path: str):

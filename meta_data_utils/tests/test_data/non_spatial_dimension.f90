@@ -79,7 +79,7 @@ contains
               dimension_category = NUMERICAL, &
               help_text = "test_axis_non_spatial_dimension help text", &
               axis_definition = [real(r_def) :: 1,2,3,4,5,6,7,8,9], &
-              non_spatial_units = '1')], &
+              non_spatial_units = "1")], &
       misc_meta_data = [misc_meta_data_type("positive","eastwards")])
 
         self%test_2 = field_meta_data_type(&

@@ -70,7 +70,7 @@ title={group.title}"""
                         model_levels.add(field.vertical_dimension["top_arg"])
                     if "bottom_arg" in field.vertical_dimension:
                         model_levels.add(
-                                field.vertical_dimension["bottom_arg"])
+                            field.vertical_dimension["bottom_arg"])
             rose_meta += f"""
 [field_config:{section.name}:{group.name}=model_levels_for_group]
 title=Model Levels used by this group
@@ -110,9 +110,9 @@ help=Unit of Measure: {field.units}
                 if field.vertical_dimension:
                     attribute_string = f"    =vertical_dimension:{os.linesep}"
                     for key, value in field.vertical_dimension.items():
-                        if key is "top_arg":
+                        if key == "top_arg":
                             key = "top_level"
-                        if key is "bottom_arg":
+                        if key == "bottom_arg":
                             key = "bottom_level"
                         attribute_string += f"       ={key}: " \
                                             f"{str(value)}{os.linesep}"
@@ -132,7 +132,7 @@ help=Unit of Measure: {field.units}
                     attribute_string = f"    =Required non-spatial " \
                                        f"dimensions:{os.linesep}"
                     for dimension in field.non_spatial_dimension.values():
-                        attribute_string += f"    =    {dimension['name']}"
+                        attribute_string += f"""    =    {dimension["name"]}"""
 
                     rose_meta += attribute_string
 
@@ -173,8 +173,8 @@ def add_file_meta(meta_data: Dict, rose_meta: str) -> str:
 
                 values_list.append(field.unique_id)
                 titles_list.append(
-                        section.title + ": " + group.title +
-                        ": " + field.item_title)
+                    section.title + ": " + group.title +
+                    ": " + field.item_title)
 
     values = ', '.join(values_list)
     titles = '", "'.join(titles_list)

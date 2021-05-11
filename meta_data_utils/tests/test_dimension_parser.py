@@ -19,8 +19,8 @@
 import os
 import pytest
 from fparser.two.utils import walk
-from fparser.two.Fortran2003 import Structure_Constructor_2, \
-    Array_Constructor, Section_Subscript_List
+from fparser.two.Fortran2003 import Component_Spec, \
+    Array_Constructor, Ac_Value_List
 from fparser.common.readfortran import FortranFileReader
 from fparser.two.parser import ParserFactory
 from dimension_parser import translate_vertical_dimension, \
@@ -55,7 +55,7 @@ def test_translate_vertical_dimension():
     with pytest.raises(Exception) as excinfo:
         _ = translate_vertical_dimension("fixed_dimension()")
     assert "Attribute 'positive' has been declared incorrectly" in str(
-            excinfo.value)
+        excinfo.value)
 
     assert model_height == {"standard_name": "height",
                             "units": "m",
@@ -75,90 +75,93 @@ def test_translate_vertical_dimension():
                            "positive": "POSITIVE_DOWN"}
 
 
-def test_parse_non_spatial_dimension(caplog):
+def test_parse_non_spatial_dimension():
     """
     Test that non-spatial-dimensions are correctly parsed when declared using
     axis- or label-definitions
     """
 
     expected_non_spatial_dims = [
-            {"name": "test_axis_non_spatial_dimension",
-             "type": "axis_definition",
-             "help": "test_axis_non_spatial_dimension help text",
-             "axis_definition": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
-             "units": "1"},
-            {"name": "test_tiles",
-             "type": "label_definition",
-             "help": "test_tiles help text",
-             "label_definition": ['test_value_1', 'test_value_2',
-                                  'test_value_3']}
+        {"name": "test_axis_non_spatial_dimension",
+         "type": "axis_definition",
+         "help": "test_axis_non_spatial_dimension help text",
+         "axis_definition": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+         "units": "1"},
+        {"name": "test_tiles",
+         "type": "label_definition",
+         "help": "test_tiles help text",
+         "label_definition": ['test_value_1', 'test_value_2',
+                              'test_value_3']}
     ]
 
     reader = FortranFileReader(TEST_DIR +
-                               "/non_spatial_dimension_test_data.f90",
+                               "/non_spatial_dimension.f90",
                                ignore_comments=True)
     f2003_parser = ParserFactory().create(std="f2003")
     parse_tree = f2003_parser(reader)
 
     non_spatial_dimensions = []
-    for parameter in walk(parse_tree, Structure_Constructor_2):
+    for parameter in walk(parse_tree, Component_Spec):
         if isinstance(parameter.children[1], Array_Constructor):
             if parameter.children[0].string == "non_spatial_dimension":
-
                 for array in walk(parameter.children,
-                                  types=Section_Subscript_List):
-                    non_spatial_dim = parse_non_spatial_dimension(array)
-                    non_spatial_dimensions.append(non_spatial_dim)
+                                  types=Ac_Value_List):
+                    if "non_spatial_dimension" in array.children[0].string:
+                        non_spatial_dim = parse_non_spatial_dimension(array)
+                        non_spatial_dimensions.append(non_spatial_dim)
 
     assert non_spatial_dimensions == expected_non_spatial_dims
 
 
-def test_parse_non_spatial_dimension_no_name(caplog):
+def test_parse_non_spatial_dimension_no_name():
     """
     Test that an exception is raised when a non-spatial dimension is declared
     without a name
     """
     reader = FortranFileReader(TEST_DIR +
-                               "/non_spatial_dimension_test_data_no_name.f90",
+                               "/non_spatial_dimension_no_name.f90",
                                ignore_comments=True)
     f2003_parser = ParserFactory().create(std="f2003")
     parse_tree = f2003_parser(reader)
 
     non_spatial_dimensions = []
-    for parameter in walk(parse_tree, Structure_Constructor_2):
+    for parameter in walk(parse_tree, Component_Spec):
         if isinstance(parameter.children[1], Array_Constructor):
             if parameter.children[0].string == "non_spatial_dimension":
-
                 for array in walk(parameter.children,
-                                  types=Section_Subscript_List):
-                    with pytest.raises(Exception) as excinfo:
-                        key, value = parse_non_spatial_dimension(array)
-                        non_spatial_dimensions.append((key, value))
-                    assert "Non-spatial dimension requires 'dimension_name' " \
-                           "attribute" in str(excinfo.value)
+                                  types=Ac_Value_List):
+                    if "non_spatial_dimension" in array.children[0].string:
+                        with pytest.raises(Exception) as excinfo:
+                            key, value = parse_non_spatial_dimension(array)
+                            non_spatial_dimensions.append((key, value))
+                        assert ("Non-spatial dimension requires "
+                                "'dimension_name' attribute"
+                                in str(excinfo.value))
 
 
-def test_parse_non_spatial_dimension_unrecognised_attribute(caplog):
+def test_parse_non_spatial_dimension_unrecognised_attribute():
     """
     Test that an exception is raised when an unrecognised non-spatial-dimension
     attribute is present
     """
     reader = FortranFileReader(
-            TEST_DIR +
-            "/non_spatial_dimension_test_data_unrecognised_attribute.f90",
-            ignore_comments=True)
+        TEST_DIR +
+        "/non_spatial_dimension_unrecognised_attribute.f90",
+        ignore_comments=True)
     f2003_parser = ParserFactory().create(std="f2003")
     parse_tree = f2003_parser(reader)
 
     non_spatial_dimensions = []
-    for parameter in walk(parse_tree, Structure_Constructor_2):
+    for parameter in walk(parse_tree, Component_Spec):
         if isinstance(parameter.children[1], Array_Constructor):
             if parameter.children[0].string == "non_spatial_dimension":
 
                 for array in walk(parameter.children,
-                                  types=Section_Subscript_List):
-                    with pytest.raises(Exception) as excinfo:
-                        key, value = parse_non_spatial_dimension(array)
-                        non_spatial_dimensions.append((key, value))
-                    assert "Unrecognised non-spatial-dimension attribute " \
-                           "'unrecognised_attribute'" in str(excinfo.value)
+                                  types=Ac_Value_List):
+                    if "non_spatial_dimension" in array.children[0].string:
+                        with pytest.raises(Exception) as excinfo:
+                            key, value = parse_non_spatial_dimension(array)
+                            non_spatial_dimensions.append((key, value))
+                        assert ("Unrecognised non-spatial-dimension "
+                                "attribute 'unrecognised_attribute'"
+                                in str(excinfo.value))

@@ -25,7 +25,7 @@ import re
 from typing import Dict
 
 from fparser.two.Fortran2003 import Else_Stmt, \
-    If_Then_Stmt, Structure_Constructor_2, Section_Subscript_List
+    If_Then_Stmt, Component_Spec, Ac_Value_List
 from fparser.two.parser import ParserFactory
 from fparser.two.utils import walk
 
@@ -126,7 +126,7 @@ def translate_vertical_dimension(dimension_declaration):
     return parsed_definition
 
 
-def parse_non_spatial_dimension(non_spatial_dimension: Section_Subscript_List)\
+def parse_non_spatial_dimension(non_spatial_dimension: Ac_Value_List)\
             -> Dict:
     """Takes an fparser object (that contains non_spatial_dimension data)
     and returns that data in a dictionary
@@ -137,7 +137,8 @@ def parse_non_spatial_dimension(non_spatial_dimension: Section_Subscript_List)\
              "CATEGORICAL": "label_definition"}
 
     for attribute in walk(non_spatial_dimension,
-                          types=Structure_Constructor_2):
+                          types=Component_Spec):
+
         if attribute.children[0].string == "dimension_name":
             definition.update({"name": attribute.children[1].string[1:-1]})
 
@@ -161,6 +162,7 @@ def parse_non_spatial_dimension(non_spatial_dimension: Section_Subscript_List)\
 
         elif attribute.children[0].string == "non_spatial_units":
             definition.update({"units": attribute.children[1].string[1:-1]})
+
         else:
             raise Exception(f"Unrecognised non-spatial-dimension attribute "
                             f"'{attribute.children[0].string}'")
