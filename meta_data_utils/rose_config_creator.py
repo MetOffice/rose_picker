@@ -227,13 +227,98 @@ compulsory=true
 fail-if=len(this) == 0 # Name must be specified
 sort-key=01
 
+[vertical_dimension=primary_axis]
+title=Primary axis
+description=Does this dimension define the vertical extrusion in LFRic
+help=Should the LFRic vertical extrusion be based on this dimension
+    =If true then the specification method should be generated
+    =The LFRic extrusion namelist can then be updated with the given parameters
+    =Only one dimension should be set to true 
+values=true,false
+compulsory=true
+fail-if=this == 'true' and vertical_dimension=specification_method == 'manual'
+       =# Primary axis must have generated as specification method
+sort-key=02
+
+[vertical_dimension=specification_method]
+title=Specification method
+description=Method for specifying the dimension level definition
+help=Whether the vertical dimension is specified by parameters used to generate
+     it in lFRic, or by the height of each level being defined in Rose
+values=generated,manual
+trigger=vertical_dimension=extrusion_method: generated;
+       =vertical_dimension=domain_top: generated;
+       =vertical_dimension=level_definition: manual;
+compulsory=true
+sort-key=03
+
+[vertical_dimension=number_of_layers]
+compulsory=true
+description=Number of layers in the vertical
+fail-if=this < 1 ;
+help=Setting for number of layers of 3D-mesh in vertical.
+range=1:
+sort-key=04
+title=Number of layers
+type=integer
+
+[vertical_dimension=domain_top]
+compulsory=true
+description=Domain height [m]
+fail-if=this < 0.0 ;
+help=Height of the model domain from a flat planet surface.
+    =Height of planet surface taken as:
+    = * For Cartesian domain: 0m
+    = * For Spherical domain: namelist:planet=radius
+range=0.0:
+sort-key=05
+title=Domain top
+type=real
+
+[vertical_dimension=extrusion_method]
+compulsory=true
+description=Method for generating eta coordinate
+fail-if=this == 'um_L38_29t_9s_40km'  and vertical_dimension=number_of_layers != 38 ;
+       =this == 'um_L70_50t_20s_80km' and vertical_dimension=number_of_layers != 70 ;
+       =this == 'um_L85_50t_35s_85km' and vertical_dimension=number_of_layers != 85 ;
+help=Available extrusion methods are (\\f$n$ is number of layers):
+    =1) Uniform eta spacing (\\f$\\frac{k}{n}\\f$);
+    =2) Quadratic eta spacing (\\f$\\frac{k}{n}^2\\f$);
+    =3) Geometric eta spacing (\\f$d\eta = \\frac{(s - 1)}{(s^{n} - 1)}$)
+    =    with stretching factor prescribed (\\f$s=1.03$);
+    =4) DCMIP eta spacing (Ullrich et al. (2012) DCMIP documentation, Appendix F.2.)
+    =    with flattening parameter prescribed.
+    =5) L38 40km UM specific eta spacing;
+    =6) L70 80km UM specific eta spacing;
+    =7) L85 85km UM specific eta spacing;
+sort-key=06
+title=Extrusion method
+value-titles=Uniform, Quadratic, Geometric, DCMIP,
+            = um_L38_29t_9s_40km, um_L70_50t_20s_80km, um_L85_50t_35s_85km
+values='uniform', 'quadratic', 'geometric', 'dcmip',
+      ='um_L38_29t_9s_40km', 'um_L70_50t_20s_80km', 'um_L85_50t_35s_85km'
+
+[vertical_dimension=level_definition]
+compulsory=true
+title=Level boundaries
+description=Boundaries of levels in ascending order
+help=Positive numbers defining the edges of each level in the vertical
+     dimension. The boundaries should be entered in ascending order
+length=:
+type=real
+!macro=level_definition.Validator, level_definition.Transformer
+range=0:
+fail-if=len(this) != vertical_dimension=number_of_layers + 1 
+       =# Number of level boundaries must equal number of layers plus one
+sort-key=05
+
 [vertical_dimension=positive]
 title=Positive
 description=The positive direction
 help=The positive direction of the vertical axis, either up or down
 values=up, down
 compulsory=true
-sort-key=02
+sort-key=07
 
 [vertical_dimension=units]
 title=Units
@@ -241,20 +326,7 @@ description=Unit of measure
 help=The unit of measure for this vertical axis is restricted to be in metres
 values=m
 compulsory=true
-sort-key=03
-
-[vertical_dimension=level_definition]
-title=Level boundaries
-description=Boundaries of levels in ascending order
-help=Positive numbers defining the edges of each level in the vertical
-     dimension. The boundaries should be entered in ascending order
-length=:
-type=real
-macro=level_definition.Validator, level_definition.Transformer
-range=0:
-fail-if=len(this)<2 # There must be at least two level boundaries
-compulsory=true
-sort-key=04
+sort-key=08
 """
     num = 1001
     for level in levels:
@@ -262,10 +334,9 @@ sort-key=04
 title={level.replace("_", " ".title())}
 description=A Model Level
 type=integer
-
-range=0:
+range=1:
 # Layer out of range
-fail-if=this > len(vertical_dimension=level_definition)-1;
+fail-if=this > vertical_dimension=number_of_layers;
 sort-key=model-levels-{num}"""
         rose_meta += os.linesep
         num += 1
