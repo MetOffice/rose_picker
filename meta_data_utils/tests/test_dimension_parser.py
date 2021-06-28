@@ -25,15 +25,8 @@ from fparser.common.readfortran import FortranFileReader
 from fparser.two.parser import ParserFactory
 from dimension_parser import translate_vertical_dimension, \
     parse_non_spatial_dimension
-from fortran_reader import read_enum
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__)) + "/test_data"
-ENUM_TEST_FILE = "/enum_test_file"
-
-
-def test_read_enum():
-    """Check that test enum file is correctly read"""
-    assert read_enum(TEST_DIR + ENUM_TEST_FILE) == ["ONE", "TWO"]
 
 
 def test_translate_vertical_dimension():

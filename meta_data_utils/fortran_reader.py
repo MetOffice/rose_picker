@@ -339,5 +339,5 @@ def read_enum(path: str):
 
     for enum in walk(parse_tree, types=Enumerator_Def_Stmt):
         for item in enum.children[1].children:
-            enumerated_values.append(item.children[0].string)
+            enumerated_values.append(item.string)
     return enumerated_values

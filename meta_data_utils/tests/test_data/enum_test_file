@@ -10,10 +10,8 @@
 module test_enum_mod
 
   implicit none
-  !> THE NUMBERS IN THIS FILE ARE ARBITARY.
-  !> DO NOT ATTEMPT TO USE THEM IN ANY CODE
   enum, bind(c)
-    enumerator :: ONE = 1,                          &
-                  TWO = 2
+    enumerator :: ONE, &
+                  TWO
   end enum
 end module test_enum_mod

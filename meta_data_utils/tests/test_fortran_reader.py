@@ -19,13 +19,15 @@ import os
 import shutil
 import pytest
 
-from fortran_reader import FortranMetaDataReader
+from fortran_reader import FortranMetaDataReader, read_enum
 from entities import Section
 
 
 TEST_DATA_DIR = os.path.dirname(os.path.abspath(__file__)) + "/test_data"
 META_TYPES_FOLDER = "/um_physics/source/diagnostics_meta/meta_types/"
 LFRIC_URL = "fcm:lfric.x_tr@head"
+ENUM_TEST_FILE = "/enum_test_file"
+TEST_DIR = os.path.dirname(os.path.abspath(__file__)) + "/test_data"
 
 
 def setup_lfric():
@@ -86,3 +88,8 @@ def test_read_fortran_files_3():
                " a valid attribute!" in str(excinfo.value)
 
     tear_down_lfric(root_dir)
+
+
+def test_read_enum():
+    """Check that test enum file is correctly read"""
+    assert read_enum(TEST_DIR + ENUM_TEST_FILE) == ["ONE", "TWO"]
