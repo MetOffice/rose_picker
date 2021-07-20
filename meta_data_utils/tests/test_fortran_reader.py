@@ -16,18 +16,24 @@
 ##############################################################################
 """Test the Fortran reader processes files"""
 import os
+import copy
 import shutil
 import pytest
 
+from fparser.common.readfortran import FortranFileReader
+from fparser.two.parser import ParserFactory
+from fparser.two.utils import walk
+from fparser.two.Fortran2003 import Assignment_Stmt, Component_Spec, \
+    Array_Constructor
 from fortran_reader import FortranMetaDataReader, read_enum
-from entities import Section
+from entities import Section, Field
 
 
-TEST_DATA_DIR = os.path.dirname(os.path.abspath(__file__)) + "/test_data"
+TEST_DATA_DIR = os.path.dirname(os.path.abspath(__file__)) + "/test_data/"
 META_TYPES_FOLDER = "/um_physics/source/diagnostics_meta/meta_types/"
 LFRIC_URL = "fcm:lfric.x_tr@head"
 ENUM_TEST_FILE = "/enum_test_file"
-TEST_DIR = os.path.dirname(os.path.abspath(__file__)) + "/test_data"
+TEST_DIR = os.path.dirname(os.path.abspath(__file__)) + "/tests"
 
 
 def setup_lfric():
@@ -45,10 +51,49 @@ def tear_down_lfric(root_dir):
     shutil.rmtree(root_dir)
 
 
+def setup_non_spatial_dims(root_dir):
+    """Sets up the needed objects to test find_nsd().
+    Monkey Patches in a compare function.
+    :param root_dir: The root directory, as discovered by the
+    setup_lfric() function"""
+    # Monkey Patching in a compare function for comparing readers
+    def monkey_patch_compare_func(self, other):
+        return \
+            self.non_spatial_dims == other.non_spatial_dims and \
+            self.levels == other.levels and \
+            self.meta_mod_files == other.meta_mod_files and \
+            self.meta_types_path == other.meta_types_path and \
+            self.valid_meta_data == other.valid_meta_data and \
+            self.vertical_dimension_definition == \
+            other.vertical_dimension_definition
+
+    monkey_patch_func = monkey_patch_compare_func
+    FortranMetaDataReader.__eq__ = monkey_patch_func
+
+    parameters = []
+
+    parser = ParserFactory().create(std="f2003")
+    fparser_reader = FortranFileReader(TEST_DATA_DIR +
+                                       "find_nsd_test_data.f90",
+                                       ignore_comments=True)
+    parse_tree = parser(fparser_reader)
+
+    reader = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
+
+    for definition in walk(parse_tree.content,
+                           types=Assignment_Stmt):
+        for parameter in walk(definition, Component_Spec):
+            if isinstance(parameter.children[1], Array_Constructor):
+                if parameter.children[0].string == "non_spatial_dimension":
+                    parameters.append(parameter)
+
+    return parameters, reader
+
+
 def test_read_fortran_files_1():
     """Does it find the files in the overall project?"""
     root_dir = setup_lfric()
-    test_parser = FortranMetaDataReader(root_dir, META_TYPES_FOLDER)
+    test_parser = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
     result = test_parser.read_fortran_files()
     assert "example_science_section" in result[0]["sections"].keys()
     # assert result[1] is True # can't test this as it's outside of your
@@ -61,9 +106,9 @@ def test_read_fortran_files_1():
 def test_read_fortran_files_2():
     """Does our test file from test_data load?"""
     root_dir = setup_lfric()
-    test_parser = FortranMetaDataReader(root_dir, META_TYPES_FOLDER)
+    test_parser = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
     test_parser.meta_mod_files = [TEST_DATA_DIR +
-                                  "/test_section__test_group__.f90"]
+                                  "test_section__test_group__meta_mod.f90"]
     result = test_parser.read_fortran_files()
 
     assert result[1] is True
@@ -77,9 +122,9 @@ def test_read_fortran_files_2():
 def test_read_fortran_files_3():
     """Testing invalid attributes in field_meta_data_type"""
     root_dir = setup_lfric()
-    test_parser = FortranMetaDataReader(root_dir, META_TYPES_FOLDER)
+    test_parser = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
     test_parser.meta_mod_files = [
-        TEST_DATA_DIR + "/non_spatial_dimension_invalid_attribute.f90"]
+        TEST_DATA_DIR + "non_spatial_dimension_invalid_attribute.f90"]
     result = test_parser.read_fortran_files()
 
     assert result[1] is False
@@ -92,4 +137,79 @@ def test_read_fortran_files_3():
 
 def test_read_enum():
     """Check that test enum file is correctly read"""
-    assert read_enum(TEST_DIR + ENUM_TEST_FILE) == ["ONE", "TWO"]
+    assert read_enum(TEST_DATA_DIR + ENUM_TEST_FILE) == ["ONE", "TWO"]
+
+
+def test_find_nsd_1():
+    """Testing that if two similarly name non-spatial dimensions are not
+     identical an error is thrown"""
+    root_dir = setup_lfric()
+    parameters, reader = setup_non_spatial_dims(root_dir)
+    test_field = Field("test_section__test_field__meta_mod.f90")
+    reader.non_spatial_dims = {"test_already_in_reader_error":
+                               {"name": "test_already_in_reader_error",
+                                "type": "label_definition",
+                                "help": "test_help_text",
+                                "label_definition": ["DIFFERENT",
+                                                     "TEST",
+                                                     "VALUES"],
+                                "fields": [("test_section",
+                                            "test_field",
+                                            None)]}
+                               }
+
+    # Because the NSD being added had the same name as the one currently being
+    # held, but is different in some way, and error should be raised.
+    with pytest.raises(Exception):
+        reader.find_nsd(parameters[1], test_field)
+
+    tear_down_lfric(root_dir)
+
+
+def test_find_nsd_2():
+    """Testing that if two similarly named non-spatial dimensions are
+     identical nothing is altered"""
+    root_dir = setup_lfric()
+    parameters, reader_1 = setup_non_spatial_dims(root_dir)
+
+    reader_1.non_spatial_dims = {"test_already_in_reader_error":
+                                 {"name": "test_already_in_reader_error",
+                                  "type": "label_definition",
+                                  "help": "test_help_text",
+                                  "label_definition": ["test_value_1",
+                                                       "test_value_2",
+                                                       "test_value_3"],
+                                  "fields": [("test_section",
+                                              "test_field",
+                                              None)]}
+                                 }
+    # Creating a copy of the reader object, so it can be compared later
+    reader_2 = copy.deepcopy(reader_1)
+
+    test_field = Field("test_section__test_field__meta_mod.f90")
+    reader_1.find_nsd(parameters[0], test_field)
+
+    # Because the NSD being added is the same as the one currently held,
+    # nothing should change.
+    assert reader_1 == reader_2
+
+    tear_down_lfric(root_dir)
+
+
+def test_find_nsd_3():
+    """Testing that if a dimension is not known about, it is added"""
+    root_dir = setup_lfric()
+    parameters, reader_1 = setup_non_spatial_dims(root_dir)
+
+    # Creating a copy of the reader object, so it can be compared later
+    reader_2 = copy.deepcopy(reader_1)
+
+    test_field = Field("test_section__test_field__meta_mod.f90")
+
+    reader_1.find_nsd(parameters[0], test_field)
+
+    # Because the NSD being added is not known about, it should be added to the
+    # reader
+    assert reader_1 != reader_2
+
+    tear_down_lfric(root_dir)

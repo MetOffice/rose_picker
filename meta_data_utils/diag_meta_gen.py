@@ -16,7 +16,7 @@
 # along with Rose. If not, see <http://www.gnu.org/licenses/>.
 ##############################################################################
 """This module contains code for parsing LFRic meta source files
-It recursively looks in every folder for files ending in "meta_mod.f90".
+It recursively looks in every directory for files ending in "meta_mod.f90".
 It then parses these files and creates a rose-meta.conf file and JSON file.
 It also creates a macro to add output streams and add diagnostic fields to
 output streams in a rose-app.conf file"""
@@ -30,25 +30,25 @@ from json_meta_data import write_json_meta
 from rose_config_creator import create_rose_meta
 
 LOGGER = logging.getLogger(__name__)
+DIRECTORIES_IN_ROOT = ["meta_data_utils", "rose_picker"]
 
 
-def get_gpl_utilities_root_dir():
+def get_gpl_utilities_root_dir(directories_in_root):
     """Finds the root directory of the GPL-utilities source tree
     :return root_dir: The root directory as a string"""
 
     LOGGER.debug("GPL-utilities directory not supplied, attempting to find it")
-    folders_in_root = ["meta_data_utils", "rose_picker"]
     root_dir = os.path.dirname(os.path.abspath(__file__))
-    in_root_folder = False
+    in_root_directory = False
     counter = 0
     max_count = 20
 
-    while not in_root_folder:
-        if all(x in os.listdir(root_dir) for x in folders_in_root):
-            in_root_folder = True
+    while not in_root_directory:
+        if all(x in os.listdir(root_dir) for x in directories_in_root):
+            in_root_directory = True
         elif counter == max_count:
-            raise IOError("Unable to ascertain GPL-utils root after {0}" +
-                          "attempts ({1})".format(max_count, root_dir))
+            raise IOError("Unable to ascertain GPL-utils root after {0} "
+                          "attempts ({1})".format(str(max_count), root_dir))
         else:
             root_dir += "/.."
             counter += 1
@@ -58,33 +58,7 @@ def get_gpl_utilities_root_dir():
     return root_dir
 
 
-def get_lfric_root_dir():
-    """Finds the root directory of the LFRic source tree, expected to be the
-    current working directory.
-    :return root_dir: The root directory as a string"""
-
-    LOGGER.debug("LFRic directory not supplied, attempting to find it")
-    folders_in_root = ["infrastructure", "gungho"]
-    root_dir = os.getcwd()
-    in_root_folder = False
-    counter = 0
-    max_count = 20
-
-    while not in_root_folder:
-        if all(x in os.listdir(root_dir) for x in folders_in_root):
-            in_root_folder = True
-        elif counter == max_count:
-            raise IOError("Unable to ascertain LFRic root after {0}" +
-                          "attempts ({1})".format(max_count, root_dir))
-        else:
-            root_dir += "/.."
-
-    LOGGER.debug("The LFRic root directory was found to be %s", root_dir)
-
-    return root_dir
-
-
-def setup_logging(level: str, file_name: str):
+def setup_logging(level: int, file_name: str):
     """Creates logging handlers and configure the logging"""
 
     stream_handler = logging.StreamHandler()
@@ -104,58 +78,38 @@ end in __meta_mod.f90. These files should contain declarations for instances
 of a specific fortran type, field_meta_data_type. The information in these
 declarations are used to generate output files. These output files can be used
 in a configuration utility, such as rose.''')
-    arg_parser.add_argument("-v", "--verbose", action="store_true",
-                            help="increase output verbosity")
-    arg_parser.add_argument("-p", "--path", type=str,
-                            help='''
-This tool will recursively search through a folder structure looking for files
-that end in __meta_mod.f90.  The folder structure should be
-<root_folder>/<project directory>/source/diagnostics_meta/
-There is default behaviour that will attempt to find the root folder of the
-repository. If a specific folder is desired, specify it here.''')
-    arg_parser.add_argument("-o", "--output", type=str,
-                            help='''
+    optional = arg_parser._action_groups.pop()
+    required = arg_parser.add_argument_group('required arguments')
+    optional.add_argument("-v", "--verbose", action="store_true",
+                          help="increase output verbosity")
+    required.add_argument("-p", "--path", type=str, required=True,
+                          help='''
+The root of your LFRic repository. This tool will recursively search through a
+directory structure looking for files that end in '__meta_mod.f90'.
+''')
+    optional.add_argument("-o", "--output", type=str,
+                          help='''
 The location the generated meta data will be output to
 This tool will output a JSON representation of the generated meta data and a
-folder called 'meta'. This will contain a conf file made using the generated
+directory called 'meta'. This will contain a conf file made using the generated
 meta data as well as a macro for adding output streams and their fields to the
-configuration''')
-    arg_parser.add_argument("-f", "--filename", type=str,
-                            help='''
+configuration.''')
+    optional.add_argument("-f", "--filename", type=str,
+                          help='''
 The name of the conf file output by the generator. Defaults to rose-meta.conf
 ''')
-    arg_parser.add_argument("-s", "--support_types", type=str,
-                            help='''
+    optional.add_argument("-s", "--support_types", type=str,
+                          help='''
 This tool needs supporting type and enum declarations.
 interpolation_enum_mod.90
 levels_enum_mod.f90
 positive_enum_mod.f90
 time_step_enum_mod.f90
 vertical_dimensions_mod.f90
-Specify the folder containing these files, otherwise the tool will use the
+Specify the directory containing these files, otherwise the tool will use the
 default location''')
-
-    args = arg_parser.parse_args()
-
-    args_dict = {}
-    if args.verbose:
-        args_dict["logging_level"] = logging.DEBUG
-    else:
-        args_dict["logging_level"] = logging.INFO
-
-    if args.path:
-        args_dict["lfric_directory"] = args.path
-
-    if args.output:
-        args_dict["output_directory"] = args.output
-
-    if args.filename:
-        args_dict["metadata_file_name"] = args.filename
-
-    if args.support_types:
-        args_dict["support_types"] = args.support_types
-
-    return args_dict
+    arg_parser._action_groups.append(optional)
+    return arg_parser.parse_args()
 
 
 def add_rose_macro(root_dir: str, rose_suite_dir: str) -> None:
@@ -178,18 +132,19 @@ def add_rose_widget(root_dir: str, rose_suite_dir: str) -> None:
     :param rose_suite_dir: The path to the output Rose suite
     """
     LOGGER.info("Adding rose widget")
-    source_folder = root_dir + "/meta_data_utils/widget/"
-    dest_folder = rose_suite_dir + "/meta/lib/python/widget/"
-    os.makedirs(os.path.abspath(dest_folder), exist_ok=True)
+    # Ticket 2323 will remove this string concatenation
+    source_directory = root_dir + "/meta_data_utils/widget/"
+    dest_directory = rose_suite_dir + "/meta/lib/python/widget/"
+    os.makedirs(os.path.abspath(dest_directory), exist_ok=True)
 
     files = ["vertical_dimension_choice.py", "vertical_dimension_util.py"]
     exported = True
     for file in files:
-        shutil.copy(source_folder + file, dest_folder + file)
-        if not os.path.isfile(dest_folder + file):
+        shutil.copy(source_directory + file, dest_directory + file)
+        if not os.path.isfile(dest_directory + file):
             exported = False
             LOGGER.error("Failed to copy file from %s",
-                         source_folder + file)
+                         source_directory + file)
     if not exported:
         raise OSError("File export failed")
 
@@ -201,33 +156,40 @@ def run():
 
     log_file_name = 'meta_data_parser.log'
 
-    setup_logging(args["logging_level"], log_file_name)
-
-    if "lfric_directory" in args:
-        lfric_dir = args["lfric_directory"]
+    if args.verbose:
+        logging_level = logging.DEBUG
     else:
-        lfric_dir = get_lfric_root_dir()
+        logging_level = logging.INFO
 
-    if "output_directory" in args:
-        suite_dir = args["output_directory"]
+    setup_logging(logging_level, log_file_name)
+
+    lfric_dir = args.path
+    if not os.path.exists(lfric_dir):
+        LOGGER.error("Path to LFRic directory does not exist: %s", lfric_dir)
+        raise FileNotFoundError("Path to LFRic directory does not exist")
+
+    if args.output:
+        suite_dir = args.output
         suite_dir += '/example_rose_suite/'
     else:
         working_dir = os.path.dirname(os.path.abspath(__file__))
         suite_dir = working_dir + "/example_rose_suite/"
 
-    if "metadata_file_name" in args:
-        metadata_file_name = args["metadata_file_name"]
+    if args.filename:
+        metadata_file_name = args.filename
     else:
         metadata_file_name = "rose-meta"
 
-    if "support_types" in args:
-        meta_types_folder = args["support_types"]
+    # Ticket 2323 will remove all this string concatenation for directory paths
+    if args.support_types:
+        meta_types_directory = args.support_types
     else:
-        meta_types_folder = "/um_physics/source/diagnostics_meta/meta_types/"
+        meta_types_directory = \
+            lfric_dir + "/um_physics/source/diagnostics_meta/meta_types/"
 
     # Find meta data in fortran meta_mod.f90 files
     LOGGER.info("Starting parser")
-    reader = FortranMetaDataReader(lfric_dir, meta_types_folder)
+    reader = FortranMetaDataReader(lfric_dir, meta_types_directory)
 
     meta_data, valid = reader.read_fortran_files()
 
@@ -241,7 +203,7 @@ def run():
                     exist_ok=True)
 
         create_rose_meta(meta_data, suite_dir, metadata_file_name)
-        gpl_root_dir = get_gpl_utilities_root_dir()
+        gpl_root_dir = get_gpl_utilities_root_dir(DIRECTORIES_IN_ROOT)
         add_rose_macro(gpl_root_dir, suite_dir)
         add_rose_widget(gpl_root_dir, suite_dir)
         write_json_meta(meta_data, suite_dir)

@@ -25,6 +25,7 @@ from fparser.common.readfortran import FortranFileReader
 from fparser.two.parser import ParserFactory
 from dimension_parser import translate_vertical_dimension, \
     parse_non_spatial_dimension
+from entities import Field
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__)) + "/test_data"
 
@@ -75,16 +76,16 @@ def test_parse_non_spatial_dimension():
     """
 
     expected_non_spatial_dims = [
-        {"name": "test_axis_non_spatial_dimension",
-         "type": "axis_definition",
-         "help": "test_axis_non_spatial_dimension help text",
-         "axis_definition": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
-         "units": "1"},
-        {"name": "test_tiles",
-         "type": "label_definition",
-         "help": "test_tiles help text",
-         "label_definition": ['test_value_1', 'test_value_2',
-                              'test_value_3']}
+        [{"name": "test_axis_non_spatial_dimension",
+          "type": "axis_definition",
+          "help": "test_axis_non_spatial_dimension help text",
+          "axis_definition": ["1", "2", "3", "4", "5", "6", "7", "8", "9"],
+          "unit": "1"}],
+        [{"name": "test_tiles",
+          "type": "label_definition",
+          "help": "test_tiles help text",
+          "label_definition": ['test_value_1', 'test_value_2',
+                               'test_value_3']}]
     ]
 
     reader = FortranFileReader(TEST_DIR +
@@ -92,7 +93,8 @@ def test_parse_non_spatial_dimension():
                                ignore_comments=True)
     f2003_parser = ParserFactory().create(std="f2003")
     parse_tree = f2003_parser(reader)
-
+    dummy_field = Field("test_path")
+    dummy_field.unique_id = "dummy__field"
     non_spatial_dimensions = []
     for parameter in walk(parse_tree, Component_Spec):
         if isinstance(parameter.children[1], Array_Constructor):
@@ -100,7 +102,8 @@ def test_parse_non_spatial_dimension():
                 for array in walk(parameter.children,
                                   types=Ac_Value_List):
                     if "non_spatial_dimension" in array.children[0].string:
-                        non_spatial_dim = parse_non_spatial_dimension(array)
+                        non_spatial_dim = parse_non_spatial_dimension(
+                            array, dummy_field)
                         non_spatial_dimensions.append(non_spatial_dim)
 
     assert non_spatial_dimensions == expected_non_spatial_dims
@@ -116,6 +119,8 @@ def test_parse_non_spatial_dimension_no_name():
                                ignore_comments=True)
     f2003_parser = ParserFactory().create(std="f2003")
     parse_tree = f2003_parser(reader)
+    dummy_field = Field("test_path")
+    dummy_field.unique_id = "dummy__field"
 
     non_spatial_dimensions = []
     for parameter in walk(parse_tree, Component_Spec):
@@ -125,10 +130,11 @@ def test_parse_non_spatial_dimension_no_name():
                                   types=Ac_Value_List):
                     if "non_spatial_dimension" in array.children[0].string:
                         with pytest.raises(Exception) as excinfo:
-                            key, value = parse_non_spatial_dimension(array)
+                            key, value = parse_non_spatial_dimension(
+                                array, dummy_field)
                             non_spatial_dimensions.append((key, value))
-                        assert ("Non-spatial dimension requires "
-                                "'dimension_name' attribute"
+                        assert ("Non-spatial dimension in dummy__field "
+                                "requires 'dimension_name' attribute"
                                 in str(excinfo.value))
 
 
@@ -143,6 +149,8 @@ def test_parse_non_spatial_dimension_unrecognised_attribute():
         ignore_comments=True)
     f2003_parser = ParserFactory().create(std="f2003")
     parse_tree = f2003_parser(reader)
+    dummy_field = Field("test_path")
+    dummy_field.unique_id = "dummy__field"
 
     non_spatial_dimensions = []
     for parameter in walk(parse_tree, Component_Spec):
@@ -153,7 +161,8 @@ def test_parse_non_spatial_dimension_unrecognised_attribute():
                                   types=Ac_Value_List):
                     if "non_spatial_dimension" in array.children[0].string:
                         with pytest.raises(Exception) as excinfo:
-                            key, value = parse_non_spatial_dimension(array)
+                            key, value = parse_non_spatial_dimension(
+                                array, dummy_field)
                             non_spatial_dimensions.append((key, value))
                         assert ("Unrecognised non-spatial-dimension "
                                 "attribute 'unrecognised_attribute'"

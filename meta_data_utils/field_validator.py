@@ -40,6 +40,11 @@ def validate_field(field: Field) -> bool:
         LOGGER.error("A unique id is missing from a field in %s",
                      field.file_name)
         is_valid = False
+    # Field must have either a standard name or long name, it can have both
+    if not field.standard_name and not field.long_name:
+        LOGGER.error("%s in %s has neither a standard name or long name",
+                     field.unique_id, field.file_name)
+        is_valid = False
     if not field.units:
         LOGGER.error("A unit of measure is missing from a field in %s",
                      field.file_name)
@@ -66,8 +71,8 @@ def validate_field(field: Field) -> bool:
         is_valid = False
     if not field.recommended_interpolation:
         LOGGER.error(
-                "A recommended_interpolation attribute is missing from a"
-                " field in %s", field.file_name)
+            "A recommended_interpolation attribute is missing from a"
+            " field in %s", field.file_name)
         is_valid = False
     if StandardSynonyms.CF in field.synonyms\
             and not CF.validate_field(field):

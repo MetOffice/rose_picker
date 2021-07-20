@@ -80,7 +80,7 @@ values=
             for model_level in model_levels:
                 rose_meta += "            " + model_level + os.linesep
 
-            rose_meta += f"""
+            rose_meta += """
 sort-key=01
 compulsory=true
 """
@@ -233,7 +233,7 @@ description=Does this dimension define the vertical extrusion in LFRic
 help=Should the LFRic vertical extrusion be based on this dimension
     =If true then the specification method should be generated
     =The LFRic extrusion namelist can then be updated with the given parameters
-    =Only one dimension should be set to true 
+    =Only one dimension should be set to true
 values=true,false
 compulsory=true
 fail-if=this == 'true' and vertical_dimension=specification_method == 'manual'
@@ -284,7 +284,7 @@ fail-if=this == 'um_L38_29t_9s_40km'  and vertical_dimension=number_of_layers !=
 help=Available extrusion methods are (\\f$n$ is number of layers):
     =1) Uniform eta spacing (\\f$\\frac{k}{n}\\f$);
     =2) Quadratic eta spacing (\\f$\\frac{k}{n}^2\\f$);
-    =3) Geometric eta spacing (\\f$d\eta = \\frac{(s - 1)}{(s^{n} - 1)}$)
+    =3) Geometric eta spacing (\\f$d\\eta = \\frac{(s - 1)}{(s^{n} - 1)}$)
     =    with stretching factor prescribed (\\f$s=1.03$);
     =4) DCMIP eta spacing (Ullrich et al. (2012) DCMIP documentation, Appendix F.2.)
     =    with flattening parameter prescribed.
@@ -308,7 +308,7 @@ length=:
 type=real
 !macro=level_definition.Validator, level_definition.Transformer
 range=0:
-fail-if=len(this) != vertical_dimension=number_of_layers + 1 
+fail-if=len(this) != vertical_dimension=number_of_layers + 1
        =# Number of level boundaries must equal number of layers plus one
 sort-key=05
 
@@ -386,7 +386,7 @@ help={dimension["help"]}"""
     =Units: {dimension["units"]}"""
 
             # List each field that uses this dimension
-            rose_meta += f"""
+            rose_meta += """
     =Necessary for:"""
             for _, _, field in dimension["fields"]:
                 rose_meta += f"""

@@ -21,6 +21,8 @@ from standards.standard_synonyms import StandardSynonyms
 
 
 def test_bad_unique_id_setter(caplog):
+    """Test that an exception is raised for a unique ID that does not conform
+     to the standard"""
     test_empty_field = Field("A File Path")
     test_empty_field.unique_id = "Bad Unique name"
 
@@ -29,6 +31,7 @@ def test_bad_unique_id_setter(caplog):
 
 
 def test_good_unique_id_setter():
+    """Test that a well formatted unique ID is parsed correctly"""
     test_empty_field = Field("A File Path")
     test_empty_field.unique_id = "good__unique_name"
 
@@ -37,6 +40,7 @@ def test_good_unique_id_setter():
 
 
 def test_is_valid_1(caplog):
+    """Test that a field has all of the required attributes"""
     test_empty_field = Field("A File Path")
 
     assert validate_field(test_empty_field) is False
@@ -60,10 +64,12 @@ def test_is_valid_1(caplog):
 
 
 def test_is_valid_2(caplog):
+    """Test that a field has all of the required attributes"""
     test_field = Field("A File Path")
 
     # Unique ID needs to conform to the naming standard
     setattr(test_field, "unique_id", "test_unique__id")
+    setattr(test_field, "long_name", "test_long_name")
     setattr(test_field, "units", "test_units")
     setattr(test_field, "function_space", "test_function_space")
     setattr(test_field, "trigger", "test_trigger")
@@ -78,6 +84,7 @@ def test_is_valid_2(caplog):
 
 
 def test_group_good_add_field(caplog):
+    """Test the adding of fields"""
     test_field = Field("A File Path")
     test_field.unique_id = "section_name__item_name"
     test_group = Group("Test Group", "Test filename")
@@ -88,6 +95,7 @@ def test_group_good_add_field(caplog):
 
 
 def test_group_bad_add_field(caplog):
+    """Test the adding of fields"""
     test_field = Field("A File Path")
     test_field.unique_id = "section_name__item_name"
     test_group = Group("Test Group", "Test filename")

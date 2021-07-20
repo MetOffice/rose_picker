@@ -102,6 +102,8 @@ contains
     self%rate_of_increase_rain_mass_due_to_autoconv_from_liquid_cloud = field_meta_data_type(&
       unique_id = "example_fields__rate_of_increase_of_rain_mass_due_to_"// &
                   "autoconversion_from_liquid_cloud", &
+      long_name = "example_fields__rate_of_increase_of_rain_mass_due_to_"// &
+                  "autoconversion_from_liquid_cloud", &
       units = "kg kg-1 s-1", &
       function_space = Wtheta, &
       order = 0, &

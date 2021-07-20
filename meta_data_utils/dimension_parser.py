@@ -22,12 +22,13 @@ declarations in LFRic meta data
 e.g. model_height_dimension(top=TOP_WET_LEVEL)"""
 import logging
 import re
-from typing import Dict
-
+from typing import Dict, List
 from fparser.two.Fortran2003 import Else_Stmt, \
     If_Then_Stmt, Component_Spec, Ac_Value_List
 from fparser.two.parser import ParserFactory
 from fparser.two.utils import walk
+from entities import Field
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -126,49 +127,65 @@ def translate_vertical_dimension(dimension_declaration):
     return parsed_definition
 
 
-def parse_non_spatial_dimension(non_spatial_dimension: Ac_Value_List)\
-            -> Dict:
-    """Takes an fparser object (that contains non_spatial_dimension data)
-    and returns that data in a dictionary
+def parse_non_spatial_dimension(non_spatial_dimension: Ac_Value_List,
+                                field: Field) -> List[Dict]:
+    """Takes an fparser object, that contains non_spatial_dimension data for
+    one field, and returns that data in a list of dictionaries.
+    Each dictionary representing a non-spatial dimension.
     :param non_spatial_dimension:
-    :return definition:"""
-    definition = {}
+    :param field: Used for logging purposes
+    :return: A list of dictionaries that each contain definitions
+     of non-spatial dimensions"""
+
+    LOGGER.debug("Parsing non-spatial dimensions for %s", field.unique_id)
+    LOGGER.debug("Dimension declaration: %s", non_spatial_dimension)
+
+    definitions = []
     types = {"NUMERICAL": "axis_definition",
              "CATEGORICAL": "label_definition"}
+    for nsd in non_spatial_dimension.children:
+        definition = {}
+        for attribute in walk(nsd, types=Component_Spec):
 
-    for attribute in walk(non_spatial_dimension,
-                          types=Component_Spec):
+            if attribute.children[0].string == "dimension_name":
+                definition.update(
+                    {"name": attribute.children[1].string[1:-1].lower()})
 
-        if attribute.children[0].string == "dimension_name":
-            definition.update({"name": attribute.children[1].string[1:-1]})
+            elif attribute.children[0].string == "dimension_category":
+                definition.update(
+                    {"type": types[attribute.children[1].string]})
 
-        elif attribute.children[0].string == "dimension_category":
-            definition.update({"type": types[attribute.children[1].string]})
+            elif attribute.children[0].string == "label_definition":
+                labels = []
+                for item in attribute.children[1].children[1].children[1]\
+                        .children:
+                    labels.append(item.string[1:-1])
+                definition.update({"label_definition": labels})
 
-        elif attribute.children[0].string == "label_definition":
-            labels = []
-            for item in attribute.children[1].children[1].children[1].children:
-                labels.append(item.string[1:-1])
-            definition.update({"label_definition": labels})
+            elif attribute.children[0].string == "axis_definition":
+                axis = []
+                for item in attribute.children[1].children[1].children[1]\
+                        .children:
+                    axis.append(item.string)
+                definition.update({"axis_definition": axis})
 
-        elif attribute.children[0].string == "axis_definition":
-            axis = []
-            for item in attribute.children[1].children[1].children[1].children:
-                axis.append(item.string)
-            definition.update({"axis_definition": axis})
+            elif attribute.children[0].string == "help_text":
+                definition.update({"help": attribute.children[1].string[1:-1]})
 
-        elif attribute.children[0].string == "help_text":
-            definition.update({"help": attribute.children[1].string[1:-1]})
+            elif attribute.children[0].string == "non_spatial_units":
+                definition.update(
+                    {"unit": attribute.children[1].string[1:-1]})
 
-        elif attribute.children[0].string == "non_spatial_units":
-            definition.update({"units": attribute.children[1].string[1:-1]})
+            else:
+                raise Exception(f"Unrecognised non-spatial-dimension attribute"
+                                f" '{attribute.children[0].string}' in"
+                                f" {field.unique_id}")
 
-        else:
-            raise Exception(f"Unrecognised non-spatial-dimension attribute "
-                            f"'{attribute.children[0].string}'")
+        definitions.append(definition)
 
-    if not definition.get("name", None):
-        raise Exception("Non-spatial dimension requires 'dimension_name' "
-                        "attribute")
+        if not definition.get("name", None):
+            raise Exception(f"Non-spatial dimension in {field.unique_id} "
+                            f"requires 'dimension_name' attribute")
 
-    return definition
+    LOGGER.debug("Parsed Definitions: %s", definitions)
+    return definitions

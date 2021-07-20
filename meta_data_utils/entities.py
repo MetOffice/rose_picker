@@ -37,7 +37,7 @@ class Field:
     derived fields and check for valid meta data"""
 
     UNIQUE_ID_REGEX = re.compile(
-            r"(?P<section_name>[a-z_]+)__(?P<item_name>[a-z_]+)")
+        r"(?P<section_name>[a-z_]+)__(?P<item_name>[a-z_]+)")
 
     def __init__(self, file_name):
         self.file_name = file_name
@@ -83,8 +83,8 @@ class Field:
             self._unique_id = var
         else:
             LOGGER.error(
-                    "Unique ID %s has already been set. Tried to set to %s",
-                    self.unique_id, var)
+                "Unique ID %s has already been set. Tried to set to %s",
+                self.unique_id, var)
 
     def add_value(self, property_name, value):
         """handle creation in stages"""
