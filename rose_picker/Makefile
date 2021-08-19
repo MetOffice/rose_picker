@@ -15,11 +15,24 @@
 # along with Rose. If not, see <http://www.gnu.org/licenses/>.
 ##############################################################################
 
-export ROOT_DIR ?= ../../
+ROOT_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
+
+Q ?= @
+
+export PYTHONPATH:=$(PYTHONPATH):$(ROOT_DIR)../lib/python:$(ROOT_DIR)
+
+.PHONY: style
+style: type
+	$Qecho Styling...
+	$Qpylint $(ROOT_DIR)rose_picker*
+	$Qpycodestyle $(ROOT_DIR)
+
+.PHONY: type
+type: test
+	$Qecho Typing...
+	$Qmypy $(ROOT_DIR)
 
 .PHONY: test
-test: export GPL_DIR ?= $(ROOT_DIR)/GPL
-test: export GPL_PYTHON_LIB ?= $(GPL_DIR)/lib/python
-test: PYTHONPATH:=$(PYTHONPATH):./:$(GPL_PYTHON_LIB)
 test:
-	python -m unittest discover -p '*test.py' --verbose
+	$Qecho Testing...
+	$Qpython -m pytest $(ROOT_DIR)

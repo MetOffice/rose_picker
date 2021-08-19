@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 ##############################################################################
 # (C) British Crown Copyright 2018 Met Office.
 #
@@ -16,105 +15,79 @@
 # You should have received a copy of the GNU General Public License
 # along with Rose. If not, see <http://www.gnu.org/licenses/>.
 ##############################################################################
-
-from __future__ import absolute_import
-from __future__ import print_function
-
-import argparse
-import os.path
+"""
+Rose Picker program script. Execution starts here.
+"""
+from argparse import ArgumentParser, Namespace
 import collections
-import re
 import json
+import os.path
+from pathlib import Path
+import re
+from typing import Dict, List, Sequence
 
 import rose_lfric
 from rose_lfric.config import ConfigSyntaxError
-from rose_lfric.config_tree import ConfigTreeLoader
+from rose_lfric.config_tree import ConfigTree, ConfigTreeLoader
+
+_NAMELISTS_REGEX = re.compile(r'^\s*namelist\s*:\s*(\w*)\s*(?:=\s*(\S+))?')
 
 
 class RosePickerException(Exception):
-    pass
+    """
+    Thrown by Rose Picker to indicate errors.
+    """
+    pass  # pylint: disable=unnecessary-pass
 
 
-def main():
-
-    parser = argparse.ArgumentParser(add_help=False,
-                                     description=__doc__)
-    parser.add_argument('-help', '-h', '--help', action='help',
-                        help='Show this help message and exit')
-    parser.add_argument('-directory', metavar='path', default='.',
-                        help='Generated source files are put here.')
-    parser.add_argument('-include_dirs', action='append',
-                        help='Include directory to list of directories '
-                             'to search for inherited metadata files')
-    parser.add_argument('meta_filename', metavar='description-file',
-                        help='The metadata file to load')
-
-    args = parser.parse_args()
-
-    meta_filename = args.meta_filename
-    include_dirs = args.include_dirs
-    output_dir = args.directory
-
-    # Load in a config file. This is using Rose's "config.py" code
-    # which is different to pythons ConfigParser. We need to use
-    # config.py to ensure any changes to the way rose meta data
-    # is treated are picked up.
-    #
-    # Rose's "config_tree.py" code is used to expand any import
-    # statements in the specified configuration file.
-
+def _load_configuration(filename: Path,
+                        include_dirs: Sequence[Path]) -> ConfigTree:
+    """
+    Load and expand the configuration file.
+    """
+    if not filename.exists():
+        raise RosePickerException(f"File {filename} does not exist.")
     try:
-        # Load and expand the configuration file
-        config_node = rose_lfric.config.load(meta_filename)
+        config_node = rose_lfric.config.load(str(filename))
         tree_loader = ConfigTreeLoader()
 
-        tree_loader.load(os.path.dirname(meta_filename),
-                         os.path.basename(meta_filename),
+        tree_loader.load(filename.parent,
+                         filename.name,
                          conf_dir_paths=include_dirs,
                          conf_node=config_node)
-
+        return config_node
     except ConfigSyntaxError:
-        # Handle exception.
-        if not os.path.isfile(meta_filename):
-            print('File {} does not exist.'.format(meta_filename))
-        else:
-            print('File {} is not a valid rose '
-                  'meta configuration file.'.format(meta_filename))
-
-        quit()
+        raise RosePickerException(f"File {filename} is not a valid rose meta"
+                                  " configuration file.")
 
 
-    # Get keys list of all the namelists/members in the
-    # configuration file
-    listnames = []
-    namelist_config = collections.OrderedDict()
-    namelists_regex = re.compile(
-        r'^\s*namelist\s*:\s*(\w*)\s*(?:=\s*(\S+))?')
-
-    node_keys = list(filter(namelists_regex.match,
+def _list_configuration(config_node: ConfigTree) -> List[str]:
+    """
+    Get keys list of all the namelists/members in the configuration file.
+    """
+    node_keys = list(filter(_NAMELISTS_REGEX.match,
                             config_node.get_value().keys()))
     node_keys.sort()
+    return node_keys
 
-    required_properties = ['bounds',
-                           'enumeration',
-                           'expression',
-                           'kind',
-                           'length',
-                           'string_length',
-                           'type',
-                           'values']
 
-    # Extract require namelists and member
-    # properties to build namelist loaders.
+def _extract_namelists(config_node: ConfigTree,
+                       required_properties: Sequence[str],
+                       listnames: List[str],
+                       namelist_config: Dict[str, Dict[str, Dict[str, str]]]):
+    """
+    Extracts namelist properties from meta-data.
+    """
+    node_keys = _list_configuration(config_node)
     for key in node_keys:
 
-        match = namelists_regex.match(key)
+        match = _NAMELISTS_REGEX.match(key)
         node = match.group(0)
         namelist = match.group(1)
         member = match.group(2)
 
         if namelist:
-            if not member:
+            if not member:  # pylint: disable=no-else-continue
                 listnames.append(namelist)
                 namelist_config[namelist] = {}
                 continue
@@ -137,6 +110,33 @@ def main():
                         namelist_config[namelist][member][i] \
                             = member_prop
 
+
+def main(meta_filename: Path, include_dirs: Sequence[Path], output_dir: Path):
+    """
+    Rose Picker entry point.
+
+    Load in a config file. This is using Rose's "config.py" code which is
+    different to pythons ConfigParser. We need to use config.py to ensure any
+    changes to the way rose meta data is treated are picked up.
+
+    Rose's "config_tree.py" code is used to expand any import statements in the
+    specified configuration file.
+    """
+    config_node = _load_configuration(meta_filename, include_dirs)
+
+    required_properties = ['bounds',
+                           'enumeration',
+                           'expression',
+                           'kind',
+                           'length',
+                           'string_length',
+                           'type',
+                           'values']
+    listnames: List[str] = []
+    namelist_config = collections.OrderedDict()
+    _extract_namelists(config_node, required_properties,
+                       listnames, namelist_config)
+
     basename = os.path.basename(meta_filename).split('.')
 
     # Output as .json file
@@ -155,5 +155,22 @@ def main():
     output.close()
 
 
+def _cli() -> Namespace:
+    parser = ArgumentParser(add_help=False, description=__doc__)
+    parser.add_argument('-help', '-h', '--help', action='help',
+                        help='Show this help message and exit')
+    parser.add_argument('-directory', metavar='path',
+                        type=Path, default=Path.cwd(),
+                        help='Generated source files are put here.')
+    parser.add_argument('-include_dirs', action='append',
+                        type=Path,
+                        help='Include directory to list of directories '
+                             'to search for inherited metadata files')
+    parser.add_argument('meta_filename', metavar='description-file',
+                        type=Path,
+                        help='The metadata file to load')
+    return parser.parse_args()
+
 if __name__ == '__main__':
-    main()
+    ARGS = _cli()
+    main(ARGS.meta_filename, ARGS.include_dirs, ARGS.directory)

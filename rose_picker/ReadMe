@@ -1,0 +1,14 @@
+As we make releases of Rose Picker in the form of environment modules we have
+decoupled the project trunk from its users. Thus testing new versions and
+adopting them in user projects may be performed in slow time with no need to
+synchronise projects.
+
+Having said that it can be useful to test a user project against a new version
+of Rose Picker. If you need to do this the easiest way is to load the
+development environment as usual, then unload the "rose-picker" module. The
+path of the candidate binary directory may then be appended to the PATH
+environment variable. Use the "which rose_picker" command to confirm that the
+expected version is being used.
+
+This can be done as part of the platform specific optional configuration in a
+test suite, should you wish to use that testing vehicle.

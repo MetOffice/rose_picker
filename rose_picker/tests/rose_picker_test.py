@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 ##############################################################################
 # (C) British Crown Copyright 2018 Met Office.
 #
@@ -16,59 +14,47 @@
 # You should have received a copy of the GNU General Public License
 # along with Rose. If not, see <http://www.gnu.org/licenses/>.
 ##############################################################################
-
-from __future__ import absolute_import
-import unittest
-import os
+"""
+Functional tests of rose-picker tool.
+"""
 import collections
-import pickle
 import json
-import tempfile
-from subprocess import check_output, Popen, CalledProcessError, STDOUT
+from pathlib import Path
+from subprocess import run, PIPE
+from typing import List
 
 
-PICKER_EXE = './rose_picker'
+PICKER_EXE = Path(__file__).parent.parent / 'rose_picker'
 
 
 ###############################################################################
-class RosePickerTest(unittest.TestCase):
-
-    ##########################################################################
-    def setUp(self):
-        self.nml_config_file = None
-
-    ##########################################################################
-    def tearDown(self):
-        if self.nml_config_file:
-            os.remove(self.nml_config_file)
-        if os.path.isfile('config_namelists.txt'):
-            os.remove('config_namelists.txt')
-
-    ##########################################################################
-    def test_no_namelist_for_member(self):
-
-        input_file = tempfile.NamedTemporaryFile()
-        input_file.write('''
+def test_no_namelist_for_member(tmp_path: Path):
+    """
+    Confirms that metadata which describes a variable but no associated
+    namelist throws an error.
+    """
+    input_file = tmp_path / 'missing.nml'
+    input_file.write_text('''
 [namelist:kevin=orphan]
 type=integer
 ''')
-        input_file.seek(0)
-        picker_command = "{} {}".format(PICKER_EXE, input_file.name)
 
-        with self.assertRaises(CalledProcessError) as context:
-            check_output(picker_command, shell=True, stderr=STDOUT)
+    command = [PICKER_EXE, input_file]
+    process = run(command, cwd=input_file.parent, stderr=PIPE, check=False)
+    assert process.returncode != 0
 
-        input_file.close()
+    expected = 'namelist:kevin has no section in metadata' \
+               ' configuration file'
+    assert expected in str(process.stderr)
 
-        self.assertIn(
-            'namelist:kevin has no section in metadata configuration file',
-            context.exception.output)
 
-    ##########################################################################
-    def test_good_picker(self):
-
-        input_file = tempfile.NamedTemporaryFile()
-        input_file.write('''
+###############################################################################
+def test_good_picker(tmp_path: Path):
+    """
+    Confirms that valid metadata produces expected output.
+    """
+    input_file = tmp_path / 'good.nml'
+    input_file.write_text('''
 [namelist:aerial]
 
 [namelist:aerial=fred]
@@ -93,33 +79,50 @@ length=:
 type=integer
 length=:
 ''')
-        input_file.seek(0)
 
-        picker_command = "{} {}".format(PICKER_EXE, input_file.name)
-        out = Popen(picker_command, shell=True)
-        out.wait()
-        input_file.close()
+    command = [PICKER_EXE, input_file]
+    process = run(command, cwd=input_file.parent, check=False)
+    assert process.returncode == 0
 
-        # json file
-        self.nml_config_file = \
-            '{}.json'.format(os.path.basename(input_file.name))
+    # json file
+    output_file = input_file.with_suffix('.json')
+    with output_file.open() as fhandle:
+        result = json.load(fhandle)
 
-        config_file = open(self.nml_config_file, 'rb')
-        result = json.load(config_file)
-        config_file.close()
+    good_result = collections.OrderedDict(
+        {'aerial': {'dino':   {'length': ':',
+                               'type':   'integer',
+                               'bounds': 'namelist:sugar=TABLET'},
+                    'wilma':  {'length': ':',
+                               'type':   'real',
+                               'bounds': 'source:constants_mod=FUDGE'},
+                    'betty':  {'length': ':',
+                               'type':   'logical',
+                               'bounds': 'fred'},
+                    'bambam': {'length': ':',
+                               'type':   'integer'},
+                    'fred':   {'type':   'real'}}})
 
-        good_result = collections.OrderedDict(
-            {'aerial': {'dino':   {'length': ':',
-                                   'type':   'integer',
-                                   'bounds': 'namelist:sugar=TABLET'},
-                        'wilma':  {'length': ':',
-                                   'type':   'real',
-                                   'bounds': 'source:constants_mod=FUDGE'},
-                        'betty':  {'length': ':',
-                                   'type':   'logical',
-                                   'bounds': 'fred'},
-                        'bambam': {'length': ':',
-                                   'type':   'integer'},
-                        'fred':   {'type':   'real'}}})
+    assert result == good_result
 
-        self.assertEqual(good_result, result)
+
+###############################################################################
+def test_full_commandline(tmp_path: Path):
+    input_file = tmp_path / 'input/config-meta.conf'
+    input_file.parent.mkdir()
+    input_file.write_text('''
+''')
+
+    include_dir = tmp_path / 'include'
+    include_dir.mkdir()
+
+    output_file = tmp_path / 'output/config-meta.json'
+    output_file.parent.mkdir()
+
+    command: List[str] = [str(PICKER_EXE), str(input_file),
+                          '-directory', str(output_file.parent),
+                          '-include_dirs', str(include_dir)]
+    process = run(command, check=False)
+    assert process.returncode == 0
+
+    assert output_file.exists()
