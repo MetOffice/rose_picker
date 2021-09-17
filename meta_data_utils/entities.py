@@ -77,8 +77,8 @@ class Field:
                 self.item_name = found.group("item_name")
                 self.item_title = self.item_name.replace("_", " ").title()
             else:
-                LOGGER.error("Unique ID %s does not conform to the standard",
-                             var)
+                LOGGER.error("Unique ID %s does not conform to the naming "
+                             "standard", var)
 
             self._unique_id = var
         else:

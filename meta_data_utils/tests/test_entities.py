@@ -26,8 +26,8 @@ def test_bad_unique_id_setter(caplog):
     test_empty_field = Field("A File Path")
     test_empty_field.unique_id = "Bad Unique name"
 
-    assert "Unique ID Bad Unique name does not conform to the standard" in \
-           caplog.text
+    assert "Unique ID Bad Unique name does not conform to the naming " \
+           "standard" in caplog.text
 
 
 def test_good_unique_id_setter():
