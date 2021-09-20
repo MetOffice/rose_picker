@@ -5,10 +5,10 @@
 !------------------------------------------------------------------------------
 ! File for testing parse_non_spatial_dimension() in dimension_parser.py
 ! This code is not intended to be compiled
-module non_spatial_dimension_test_data_unrecognised_attribute
+module non_spatial_dimension__unrecognised_attribute
 
   use diagnostics_mod,                only: field_meta_data_type
-  use constants_mod,                  only: real_type, r_def
+  use constants_mod,                  only: real_type, r_def, str_def
   !> Only import the dimensions that you will actually be using
   use vertical_dimensions_mod,        only: model_height_dimension
   use misc_meta_data_mod,             only: misc_meta_data_type
@@ -29,20 +29,21 @@ module non_spatial_dimension_test_data_unrecognised_attribute
 
   private
 
-  type, public :: non_spatial_dimension_test_data_unrecognised_attribute__meta_type
+  type, public :: non_spatial_dimension__unrecognised_attribute__meta_type
 
     !> Declare the name of your fields here
     type(field_meta_data_type), public :: &
       test_1
-    end type non_spatial_dimension_test_data_unrecognised_attribute__meta_type
+    character(str_def) :: name = "non_spatial_dimension__unrecognised_attribute"
+    end type non_spatial_dimension__unrecognised_attribute__meta_type
 
-  interface non_spatial_dimension_test_data_unrecognised_attribute__meta_type
-    module procedure non_spatial_dimension_test_data_unrecognised_attribute__meta_constructor
+  interface non_spatial_dimension__unrecognised_attribute__meta_type
+    module procedure non_spatial_dimension__unrecognised_attribute__meta_constructor
   end interface
 
 contains
 
-  function non_spatial_dimension_test_data_unrecognised_attribute__meta_constructor() result(self)
+  function non_spatial_dimension__unrecognised_attribute__meta_constructor() result(self)
 
     implicit none
 
@@ -79,6 +80,6 @@ contains
               unrecognised_attribute = "something")], &
       misc_meta_data = [misc_meta_data_type("positive","eastwards")])
 
-  end function non_spatial_dimension_test_data_unrecognised_attribute__meta_constructor
+  end function non_spatial_dimension__unrecognised_attribute__meta_constructor
 
-end module non_spatial_dimension_test_data_unrecognised_attribute
+end module non_spatial_dimension__unrecognised_attribute

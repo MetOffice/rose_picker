@@ -57,6 +57,15 @@ module test_section__test_group__meta_mod
 
     end type test_section__test_group__meta_type
 
+  type, public :: test_section_2__test_group__meta_type
+
+    !> Declare the name of your fields here
+    type(field_meta_data_type), public :: &
+      example_field
+      character(str_def) :: name = "test_section_2__test_group"
+
+    end type test_section_2__test_group__meta_type
+
   interface test_section__test_group__meta_type
     module procedure example_science_section__example_fields__meta_constructor
   end interface

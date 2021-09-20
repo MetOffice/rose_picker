@@ -103,7 +103,7 @@ def test_read_fortran_files_1():
     tear_down_lfric(root_dir)
 
 
-def test_read_fortran_files_2():
+def test_read_fortran_files_2(caplog):
     """Does our test file from test_data load?"""
     root_dir = setup_lfric()
     test_parser = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
@@ -124,7 +124,8 @@ def test_read_fortran_files_3():
     root_dir = setup_lfric()
     test_parser = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
     test_parser.meta_mod_files = [
-        TEST_DATA_DIR + "non_spatial_dimension_invalid_attribute.f90"]
+        TEST_DATA_DIR +
+        "non_spatial_dimension__invalid_attribute__meta_mod.f90"]
     result = test_parser.read_fortran_files()
 
     assert result[1] is False
@@ -211,5 +212,42 @@ def test_find_nsd_3():
     # Because the NSD being added is not known about, it should be added to the
     # reader
     assert reader_1 != reader_2
+
+    tear_down_lfric(root_dir)
+
+
+def test_validate_naming_1(caplog):
+    """Testing that an error is thrown if a *__meta_mod.f90 file has more than
+     one type definition"""
+    root_dir = setup_lfric()
+    test_parser = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
+    test_parser.meta_mod_files = [
+        TEST_DATA_DIR +
+        "validate_naming__multiple_type_def__meta_mod.f90"]
+    result = test_parser.read_fortran_files()
+
+    assert result[1] is False
+    assert "More than one meta type has been declared in" in caplog.text
+
+    tear_down_lfric(root_dir)
+
+
+def test_validate_naming_2(caplog):
+    """Testing that an error is thrown if the filename doesn't match the
+    group/module/type_def name"""
+    root_dir = setup_lfric()
+    test_parser = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
+    test_parser.meta_mod_files = [
+        TEST_DATA_DIR +
+        "non_matching__file_name__meta_mod.f90"]
+    result = test_parser.read_fortran_files()
+
+    assert result[1] is False
+    assert "Naming Error! file name and module name do not match" \
+           in caplog.text
+    assert "Naming Error! file name and meta type name do not match" \
+           in caplog.text
+    assert "Naming Error! file name and group name do not match" \
+           in caplog.text
 
     tear_down_lfric(root_dir)

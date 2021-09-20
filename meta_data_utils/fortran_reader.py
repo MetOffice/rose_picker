@@ -26,7 +26,8 @@ from fparser.common.readfortran import FortranFileReader
 from fparser.two.Fortran2003 import Array_Constructor, Assignment_Stmt, \
     Char_Literal_Constant, Enumerator_Def_Stmt, \
     Level_3_Expr, Part_Ref, Structure_Constructor, \
-    Component_Spec, Ac_Value_List
+    Component_Spec, Ac_Value_List, Derived_Type_Stmt, Derived_Type_Def, \
+    Data_Component_Def_Stmt, Intrinsic_Type_Spec, Component_Decl
 from fparser.two.parser import ParserFactory
 from fparser.two.utils import FparserException, walk
 
@@ -34,6 +35,7 @@ from dimension_parser import translate_vertical_dimension, \
     parse_non_spatial_dimension
 from entities import Field, Group, Section
 from field_validator import validate_field
+from file_validator import validate_names
 
 F2003_PARSER = ParserFactory().create(std="f2003")
 
@@ -46,8 +48,9 @@ class FortranMetaDataReader:
     vertical_dimension_definition = None
     valid_meta_data = True
 
-    FILE_NAME_REGEX = re.compile(r"(?P<section_name>[a-z_]+?)__"
-                                 r"(?P<group_name>[a-z_]+)__")
+    FILE_NAME_REGEX = re.compile(
+        r"(?P<section_name>[a-zA-Z_0-9]+?)__"
+        r"(?P<group_name>[a-zA-Z_0-9]+)__meta_mod.*90")
 
     def __init__(self, root_directory: str, meta_types_path: str):
         self.__root_dir = root_directory
@@ -75,6 +78,45 @@ class FortranMetaDataReader:
 
         self.LOGGER.info("Found %i meta data files", len(self.meta_mod_files))
 
+    def validate_naming(self, file_path, parse_tree):
+        """Finds all the different names declared within *__meta_mod.f90 files
+        param: file_path: The file of the *__meta_mod.f90
+        param: parse_tree: The Abstract Syntax Tree of the *__meta_mod.f90
+        created by fparser"""
+
+        # get module name
+        module_name = parse_tree.children[0].children[0].children[1].string
+        meta_type_name = None
+        group_name = None
+        found_meta_type = False
+
+        # Get meta_type name and get group name declared within
+        # Find the type definition
+        for type_def in walk(parse_tree.content, types=Derived_Type_Def):
+            if found_meta_type:
+                self.LOGGER.error("More than one meta type has been declared "
+                                  "in %s", file_path)
+                self.LOGGER.error("Only one meta type to be declared inside of"
+                                  " a *__meta_mod.f90 file")
+            found_meta_type = True
+            meta_type_name = type_def.children[0].children[1].string
+            # Find all the variables defined in the type definition
+            for variable in walk(type_def.children,
+                                 types=Data_Component_Def_Stmt):
+                # Find the CHARACTER variable called 'name'
+                if isinstance(variable.children[0], Intrinsic_Type_Spec):
+                    if variable.children[0].children[0] == 'CHARACTER':
+                        for group in walk(variable.children, Component_Decl):
+                            if group.children[0].string == "name":
+                                group_name = group.children[3].children[1].\
+                                    string.replace('"', '').replace("'", "")
+
+        naming_valid = validate_names(file_path, module_name,
+                                      meta_type_name, group_name)
+        if not naming_valid:
+            self.valid_meta_data = False
+        return naming_valid
+
     def read_fortran_files(self) -> Tuple[Dict, bool]:
         """Takes a list of file names (meta_mod.f90 files)
         Checks for correctness and returns the relevant Fortran lines in a list
@@ -93,27 +135,21 @@ class FortranMetaDataReader:
 
                 parse_tree = F2003_PARSER(reader)
 
-                file_valid = True
+                file_valid = self.validate_naming(file_path, parse_tree)
                 file_name_parts = self.FILE_NAME_REGEX.search(file_path)
 
-                if not file_name_parts:
-                    self.LOGGER.error('Filename in path is not correct %s',
-                                      file_path)
-                    self.valid_meta_data = False
-                    break
-
-                section_name = file_name_parts.group("section_name")
-                group_name = file_name_parts.group("group_name")
+                file_section_name = file_name_parts.group("section_name")
+                file_group_name = file_name_parts.group("group_name")
                 file_name = file_path[file_path.rfind("/") + 1:]
 
-                if section_name not in sections_dict:
+                if file_section_name not in sections_dict:
                     sections_dict.update(
-                        {section_name: Section(name=section_name)}
+                        {file_section_name: Section(name=file_section_name)}
                         )
 
-                group = Group(name=group_name, file_name=file_name)
+                group = Group(name=file_group_name, file_name=file_name)
 
-                sections_dict[section_name].add_group(group)
+                sections_dict[file_section_name].add_group(group)
 
                 # For every instance of a meta type object being created
                 for definition in walk(parse_tree.content,
