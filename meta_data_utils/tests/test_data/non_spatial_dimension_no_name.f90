@@ -5,7 +5,7 @@
 !------------------------------------------------------------------------------
 ! File for testing parse_non_spatial_dimension() in dimension_parser.py
 ! This code is not intended to be compiled
-module bad__meta_type_name__meta_mod
+module non_spatial_dimension_test_data
 
   use diagnostics_mod,                only: field_meta_data_type
   use constants_mod,                  only: real_type, r_def
@@ -22,25 +22,21 @@ module bad__meta_type_name__meta_mod
   !> Only import the levels that you will actually be using
   use levels_enum_mod,                only: BOTTOM_ATMOSPHERIC_LEVEL, &
                                             TOP_ATMOSPHERIC_LEVEL
-  use non_spatial_dimension_mod,      only: NUMERICAL, &
-                                            CATEGORICAL
-  use positive_enum_mod,              only: POSITIVE_UP
+  use non_spatial_dimension_mod,      only: NUMERICAL
   use field_synonyms_enum_mod,        only: AMIP, GRIB, CF, CMIP6, STASH
 
   implicit none
 
   private
 
-  type, public :: bad__meta_type_nameABC__meta_type
+  type, public :: non_spatial_dimension_test_data__meta_type
 
     !> Declare the name of your fields here
     type(field_meta_data_type), public :: &
-      test__1, &
-      test__2
-    character(str_def) :: name = "bad__meta_type_nameABC"
-    end type bad__meta_type_nameABC__meta_type
+      test_1
+    end type non_spatial_dimension_test_data__meta_type
 
-  interface bad__meta_type_nameABC__meta_type
+  interface non_spatial_dimension_test_data__meta_type
     module procedure non_spatial_dimension_test_data__meta_constructor
   end interface
 
@@ -52,8 +48,8 @@ contains
 
     type(example_science_section__example_fields__meta_type) :: self
 
-    self%test__1 = field_meta_data_type(&
-      unique_id = "test__1", &
+    self%test_1 = field_meta_data_type(&
+      unique_id = "test_1", &
       units = "m s-1", &
       function_space = W2, &
       order = 0, &
@@ -76,43 +72,11 @@ contains
             field_synonym_type(CMIP6, "ua")&
         ],&
       non_spatial_dimension = [non_spatial_dimension_type( &
-              dimension_name = "test_axis_non_spatial_dimension", &
+              axis_definition = [real(r_def) :: 1,2,3,4,5,6,7,8,9])], &
               dimension_category = NUMERICAL, &
               help_text = "test_axis_non_spatial_dimension help text", &
-              axis_definition = [real(r_def) :: 1,2,3,4,5,6,7,8,9], &
-              non_spatial_units = "1")], &
       misc_meta_data = [misc_meta_data_type("positive","eastwards")])
-
-        self%test__2 = field_meta_data_type(&
-      unique_id = "test__2", &
-      units = "m s-1", &
-      function_space = W2, &
-      order = 0, &
-      io_driver = "", &
-      trigger = "__checksum: true;", &
-      description = "u component of wind on u pts on native c grid.", &
-      data_type = REAL_TYPE, &
-      time_step = STANDARD_TIMESTEP, &
-      recommended_interpolation = BILINEAR, &
-      packing = 0, &
-      vertical_dimension = model_height_dimension( &
-              bottom = BOTTOM_ATMOSPHERIC_LEVEL, &
-              top = TOP_ATMOSPHERIC_LEVEL), &
-      standard_name = "eastward_wind", &
-      synonyms = [ &
-            field_synonym_type(STASH, "2"),& !> literally this stash code or approx - let the user know
-            field_synonym_type(AMIP, "ua"),&
-            field_synonym_type(GRIB, "33 E131"),&
-            field_synonym_type(CF, "eastward_wind"),&
-            field_synonym_type(CMIP6, "ua")], &
-      non_spatial_dimension = [non_spatial_dimension_type( &
-            dimension_name = "test_tiles", &
-            dimension_category = CATEGORICAL, &
-            help_text = "test_tiles help text", &
-            label_definition = [character(str_short) :: 'test_value_1', &
-                                                        'test_value_2', &
-                                                        'test_value_3'])])
 
   end function non_spatial_dimension_test_data__meta_constructor
 
-end module bad__meta_type_name__meta_mod
+end module non_spatial_dimension_test_data

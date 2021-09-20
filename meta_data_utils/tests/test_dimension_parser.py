@@ -84,13 +84,12 @@ def test_parse_non_spatial_dimension():
         [{"name": "test_tiles",
           "type": "label_definition",
           "help": "test_tiles help text",
-          "label_definition": ['test_value_1',
-                              'test_value_2',
+          "label_definition": ['test_value_1', 'test_value_2',
                                'test_value_3']}]
     ]
 
     reader = FortranFileReader(TEST_DIR +
-                               "/non_spatial_dimension__meta_mod.f90",
+                               "/non_spatial_dimension.f90",
                                ignore_comments=True)
     f2003_parser = ParserFactory().create(std="f2003")
     parse_tree = f2003_parser(reader)
@@ -116,7 +115,7 @@ def test_parse_non_spatial_dimension_no_name():
     without a name
     """
     reader = FortranFileReader(TEST_DIR +
-                               "/non_spatial_dimension__no_name__meta_mod.f90",
+                               "/non_spatial_dimension_no_name.f90",
                                ignore_comments=True)
     f2003_parser = ParserFactory().create(std="f2003")
     parse_tree = f2003_parser(reader)
@@ -146,7 +145,7 @@ def test_parse_non_spatial_dimension_unrecognised_attribute():
     """
     reader = FortranFileReader(
         TEST_DIR +
-        "/non_spatial_dimension__unrecognised_attribute__meta_mod.f90",
+        "/non_spatial_dimension_unrecognised_attribute.f90",
         ignore_comments=True)
     f2003_parser = ParserFactory().create(std="f2003")
     parse_tree = f2003_parser(reader)

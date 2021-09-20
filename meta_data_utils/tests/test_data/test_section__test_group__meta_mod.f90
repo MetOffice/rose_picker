@@ -13,10 +13,10 @@
 ! (*/source/diagnostics_meta/*_meta_mod.f90)
 !
 !-------------------------------------------------------------------------------
-module test_section__test_group__meta_mod
+module example_science_section__example_fields__meta_mod
 
   use diagnostics_mod,                only: field_meta_data_type
-  use constants_mod,                  only: real_type, r_def, i_def, str_def
+  use constants_mod,                  only: real_type, r_def, i_def
   !> Only import the dimensions that you will actually be using
   use vertical_dimensions_mod,        only: model_height_dimension, &
                                             model_depth_dimension, &
@@ -42,7 +42,7 @@ module test_section__test_group__meta_mod
 
   private
 
-  type, public :: test_section__test_group__meta_type
+  type, public :: example_science_section__example_fields__meta_type
 
     !> Declare the name of your fields here
     type(field_meta_data_type), public :: &
@@ -53,11 +53,10 @@ module test_section__test_group__meta_mod
       surface_altitude, &
       air_temperature_over_tiles, &
       low_type_cloud_area_fraction
-      character(str_def) :: name = "test_section__test_group"
 
-    end type test_section__test_group__meta_type
+    end type example_science_section__example_fields__meta_type
 
-  interface test_section__test_group__meta_type
+  interface example_science_section__example_fields__meta_type
     module procedure example_science_section__example_fields__meta_constructor
   end interface
 
@@ -102,6 +101,8 @@ contains
     !> of its arguments
     self%rate_of_increase_rain_mass_due_to_autoconv_from_liquid_cloud = field_meta_data_type(&
       unique_id = "example_fields__rate_of_increase_of_rain_mass_due_to_"// &
+                  "autoconversion_from_liquid_cloud", &
+      long_name = "example_fields__rate_of_increase_of_rain_mass_due_to_"// &
                   "autoconversion_from_liquid_cloud", &
       units = "kg kg-1 s-1", &
       function_space = Wtheta, &
@@ -234,4 +235,4 @@ contains
             ])
 
   end function example_science_section__example_fields__meta_constructor
-end module test_section__test_group__meta_mod
+end module example_science_section__example_fields__meta_mod
