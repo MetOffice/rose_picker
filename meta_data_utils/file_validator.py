@@ -47,8 +47,8 @@ def validate_names(file_name, module_name, meta_type_name, group_name):
         LOGGER.error('Filename in path is not correct: %s', file_name)
         return False
 
-    name_from_file = file_name_parts.group("section_name") + "__" \
-                     + file_name_parts.group("group_name")
+    name_from_file = file_name_parts.group("section_name") \
+        + "__" + file_name_parts.group("group_name")
 
     test_module_name = name_from_file + "__meta_mod"
     test_meta_type_name = name_from_file + "__meta_type"

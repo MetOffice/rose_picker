@@ -28,8 +28,8 @@ from standards.standard_synonyms import StandardSynonyms
 
 LOGGER = logging.getLogger(__name__)
 
-
-# these just need loading once as they are static
+# Ignores the instance attributes and public method pylint errors
+# pylint: disable=too-many-instance-attributes, too-few-public-methods
 
 
 class Field:

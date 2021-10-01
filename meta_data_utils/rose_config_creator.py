@@ -20,32 +20,21 @@ rose-meta.conf file"""
 import logging
 import os
 from textwrap import wrap
-from typing import Dict
+from typing import Dict, List
 
 LOGGER = logging.getLogger("lfric_meta_data_parser")
 
 
-def write_file(path: str, file_name, data: str):
-    """
-    Writes rose suite files to disk
-    :param path: The path where the file is to be written
-    :param file_name: The name of the file to be written
-    :param data: file as a string
-    """
-    with open(path + file_name + ".conf", 'w') as file:
-        file.write(data)
-
-
-def create_rose_meta(meta_data: Dict, directory: str, file_name):
+def create_rose_meta(meta_data: Dict, file_name: str):
     """
     Creates a rose_meta.conf file using the supplied meta data
     :param meta_data: Dict containing all meta data
-    :param directory: The directory the file will be saved in
     :param file_name: The name of the file that the meta data will be
     written to
     :return rose_meta: The rose-meta file as a string, ready to be written to
     disk
     """
+    # pylint: disable=too-many-branches
     LOGGER.info("Creating %s.conf", file_name)
     rose_meta = ""
 
@@ -53,7 +42,7 @@ def create_rose_meta(meta_data: Dict, directory: str, file_name):
 [field_config]
 title=LFRic Field Configuration
 """
-
+    # pylint: disable=too-many-nested-blocks
     for section in meta_data["sections"].values():
         rose_meta += f"""
 [field_config:{section.name}]
@@ -63,28 +52,30 @@ title={section.title}"""
             rose_meta += f"""
 [field_config:{section.name}:{group.name}]
 title={group.title}"""
-            model_levels = set()
+            model_levels = {}
             for field in group.fields.values():
                 if field.vertical_dimension:
                     if "top_arg" in field.vertical_dimension:
-                        model_levels.add(field.vertical_dimension["top_arg"])
+                        model_levels[field.vertical_dimension["top_arg"]]\
+                            = None
                     if "bottom_arg" in field.vertical_dimension:
-                        model_levels.add(
-                            field.vertical_dimension["bottom_arg"])
-            rose_meta += f"""
+                        model_levels[field.vertical_dimension["bottom_arg"]]\
+                            = None
+            if model_levels:
+                rose_meta += f"""
 [field_config:{section.name}:{group.name}=model_levels_for_group]
 title=Model Levels used by this group
 description=Vertical dimensions must define these levels to be valid
 values=
 """
-            for model_level in model_levels:
-                rose_meta += "            " + model_level + os.linesep
+                for model_level in model_levels:
+                    rose_meta += "            " + model_level + os.linesep
 
-            rose_meta += """
+                rose_meta += """
 sort-key=01
 compulsory=true
 """
-            rose_meta += f"""
+                rose_meta += f"""
 [field_config:{section.name}:{group.name}=vertical_dimension_for_group]
 title=Vertical dimension used by this group
 description=If you have edited the vertical dimensions please restart the GUI
@@ -155,7 +146,7 @@ title=Enable Checksum for {field.item_title}
     rose_meta = add_non_spatial_dims_meta(meta_data["non_spatial_dimensions"],
                                           rose_meta)
 
-    write_file(directory + "meta/", file_name, rose_meta)
+    return rose_meta
 
 
 def add_file_meta(meta_data: Dict, rose_meta: str) -> str:
@@ -205,7 +196,7 @@ values=instant,average,accumulate,minimum,maximum,once
     return rose_meta
 
 
-def add_vertical_meta(rose_meta: str, levels) -> str:
+def add_vertical_meta(rose_meta: str, levels: List) -> str:
     """Adds data about vertical dimensions. Currently static, will be further
     developed in the future
     :param rose_meta: String that the vertical dimension data will be appended
@@ -327,7 +318,7 @@ help=The unit of measure for this vertical axis is restricted to be in metres
 values=m
 compulsory=true
 sort-key=08
-"""
+"""  # noqa (disables line length error from pycodestyle)
     num = 1001
     for level in levels:
         rose_meta += f"""[vertical_dimension={level}]

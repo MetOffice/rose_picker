@@ -17,8 +17,8 @@
 """Test the Fortran reader processes files"""
 import os
 import copy
-import shutil
 import pytest
+from pathlib import Path
 
 from fparser.common.readfortran import FortranFileReader
 from fparser.two.parser import ParserFactory
@@ -28,30 +28,26 @@ from fparser.two.Fortran2003 import Assignment_Stmt, Component_Spec, \
 from fortran_reader import FortranMetaDataReader, read_enum
 from entities import Section, Field
 
-
-TEST_DATA_DIR = os.path.dirname(os.path.abspath(__file__)) + "/test_data/"
-META_TYPES_FOLDER = "/um_physics/source/diagnostics_meta/meta_types/"
+WORKING_DIR = Path.cwd()
+TEST_DIR = WORKING_DIR / "tests"
+TEST_DATA_DIR = WORKING_DIR / "tests/test_data"
+META_TYPES_FOLDER = "um_physics/source/diagnostics_meta/meta_types"
 LFRIC_URL = "fcm:lfric.x_tr@head"
-ENUM_TEST_FILE = "/enum_test_file"
-TEST_DIR = os.path.dirname(os.path.abspath(__file__)) + "/tests"
+ENUM_TEST_FILE = "enum_test_file"
 
 
-def setup_lfric():
+@pytest.fixture(scope="module")
+def setup_lfric(tmpdir_factory):
     """Checks out the LFRic trunk which contains required Fortran modules"""
-    lfric_path = "lfric"
-    returncode = os.system("fcm export --force {0} {1}".format(LFRIC_URL,
-                                                               lfric_path))
-    if returncode == 0 and os.path.isdir(lfric_path):
-        return lfric_path
+    temp_dir = tmpdir_factory.mktemp("data")
+    returncode = os.system(
+        "fcm export --force {0} {1}".format(LFRIC_URL, temp_dir))
+    if returncode == 0 and os.path.isdir(temp_dir):
+        return temp_dir
     raise OSError("Unable to check out {0}".format(LFRIC_URL))
 
 
-def tear_down_lfric(root_dir):
-    """Tidies up the LFRic trunk after running a test."""
-    shutil.rmtree(root_dir)
-
-
-def setup_non_spatial_dims(root_dir):
+def setup_non_spatial_dims(root_dir: Path):
     """Sets up the needed objects to test find_nsd().
     Monkey Patches in a compare function.
     :param root_dir: The root directory, as discovered by the
@@ -73,12 +69,12 @@ def setup_non_spatial_dims(root_dir):
     parameters = []
 
     parser = ParserFactory().create(std="f2003")
-    fparser_reader = FortranFileReader(TEST_DATA_DIR +
-                                       "find_nsd_test_data.f90",
-                                       ignore_comments=True)
+    fparser_reader = FortranFileReader(
+        (TEST_DATA_DIR / "find_nsd_test_data.f90").as_posix(),
+        ignore_comments=True)
     parse_tree = parser(fparser_reader)
 
-    reader = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
+    reader = FortranMetaDataReader(root_dir, root_dir / META_TYPES_FOLDER)
 
     for definition in walk(parse_tree.content,
                            types=Assignment_Stmt):
@@ -90,25 +86,26 @@ def setup_non_spatial_dims(root_dir):
     return parameters, reader
 
 
-def test_read_fortran_files_1():
+def test_read_fortran_files_1(setup_lfric):
     """Does it find the files in the overall project?"""
-    root_dir = setup_lfric()
-    test_parser = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
+
+    test_parser = FortranMetaDataReader(setup_lfric,
+                                        setup_lfric / META_TYPES_FOLDER)
     result = test_parser.read_fortran_files()
+
     assert "example_science_section" in result[0]["sections"].keys()
     # assert result[1] is True # can't test this as it's outside of your
     # control
     assert isinstance(result[0]["sections"]["example_science_section"],
                       Section)
-    tear_down_lfric(root_dir)
 
 
-def test_read_fortran_files_2(caplog):
+def test_read_fortran_files_2(setup_lfric):
     """Does our test file from test_data load?"""
-    root_dir = setup_lfric()
-    test_parser = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
-    test_parser.meta_mod_files = [TEST_DATA_DIR +
-                                  "test_section__test_group__meta_mod.f90"]
+    test_parser = FortranMetaDataReader(setup_lfric, setup_lfric /
+                                        META_TYPES_FOLDER)
+    test_parser.meta_mod_files = \
+        [(TEST_DATA_DIR / "test_section__test_group__meta_mod.f90").as_posix()]
     result = test_parser.read_fortran_files()
 
     assert result[1] is True
@@ -116,16 +113,16 @@ def test_read_fortran_files_2(caplog):
     assert "test_group" in result[0]["sections"]["test_section"].groups
     assert "example_fields__eastward_wind" in \
            result[0]["sections"]["test_section"].groups["test_group"].fields
-    tear_down_lfric(root_dir)
 
 
-def test_read_fortran_files_3():
+def test_read_fortran_files_3(setup_lfric):
     """Testing invalid attributes in field_meta_data_type"""
-    root_dir = setup_lfric()
-    test_parser = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
-    test_parser.meta_mod_files = [
-        TEST_DATA_DIR +
-        "non_spatial_dimension__invalid_attribute__meta_mod.f90"]
+
+    test_parser = FortranMetaDataReader(setup_lfric, setup_lfric /
+                                        META_TYPES_FOLDER)
+    test_parser.meta_mod_files = \
+        [(TEST_DATA_DIR /
+         "non_spatial_dimension__invalid_attribute__meta_mod.f90").as_posix()]
     result = test_parser.read_fortran_files()
 
     assert result[1] is False
@@ -133,19 +130,17 @@ def test_read_fortran_files_3():
         assert "Attribute: unrecognised_attribute is not" \
                " a valid attribute!" in str(excinfo.value)
 
-    tear_down_lfric(root_dir)
-
 
 def test_read_enum():
     """Check that test enum file is correctly read"""
-    assert read_enum(TEST_DATA_DIR + ENUM_TEST_FILE) == ["ONE", "TWO"]
+    assert read_enum(
+        (TEST_DATA_DIR / ENUM_TEST_FILE).as_posix()) == ["ONE", "TWO"]
 
 
-def test_find_nsd_1():
+def test_find_nsd_1(setup_lfric):
     """Testing that if two similarly name non-spatial dimensions are not
      identical an error is thrown"""
-    root_dir = setup_lfric()
-    parameters, reader = setup_non_spatial_dims(root_dir)
+    parameters, reader = setup_non_spatial_dims(setup_lfric)
     test_field = Field("test_section__test_field__meta_mod.f90")
     reader.non_spatial_dims = {"test_already_in_reader_error":
                                {"name": "test_already_in_reader_error",
@@ -164,14 +159,12 @@ def test_find_nsd_1():
     with pytest.raises(Exception):
         reader.find_nsd(parameters[1], test_field)
 
-    tear_down_lfric(root_dir)
 
-
-def test_find_nsd_2():
+def test_find_nsd_2(setup_lfric):
     """Testing that if two similarly named non-spatial dimensions are
      identical nothing is altered"""
-    root_dir = setup_lfric()
-    parameters, reader_1 = setup_non_spatial_dims(root_dir)
+
+    parameters, reader_1 = setup_non_spatial_dims(setup_lfric)
 
     reader_1.non_spatial_dims = {"test_already_in_reader_error":
                                  {"name": "test_already_in_reader_error",
@@ -194,13 +187,11 @@ def test_find_nsd_2():
     # nothing should change.
     assert reader_1 == reader_2
 
-    tear_down_lfric(root_dir)
 
-
-def test_find_nsd_3():
+def test_find_nsd_3(setup_lfric):
     """Testing that if a dimension is not known about, it is added"""
-    root_dir = setup_lfric()
-    parameters, reader_1 = setup_non_spatial_dims(root_dir)
+
+    parameters, reader_1 = setup_non_spatial_dims(setup_lfric)
 
     # Creating a copy of the reader object, so it can be compared later
     reader_2 = copy.deepcopy(reader_1)
@@ -213,33 +204,30 @@ def test_find_nsd_3():
     # reader
     assert reader_1 != reader_2
 
-    tear_down_lfric(root_dir)
 
-
-def test_validate_naming_1(caplog):
+def test_validate_naming_1(caplog, setup_lfric):
     """Testing that an error is thrown if a *__meta_mod.f90 file has more than
      one type definition"""
-    root_dir = setup_lfric()
-    test_parser = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
+
+    test_parser = FortranMetaDataReader(setup_lfric, setup_lfric /
+                                        META_TYPES_FOLDER)
     test_parser.meta_mod_files = [
-        TEST_DATA_DIR +
-        "validate_naming__multiple_type_def__meta_mod.f90"]
+        (TEST_DATA_DIR /
+            "validate_naming__multiple_type_def__meta_mod.f90").as_posix()]
     result = test_parser.read_fortran_files()
 
     assert result[1] is False
     assert "More than one meta type has been declared in" in caplog.text
 
-    tear_down_lfric(root_dir)
 
-
-def test_validate_naming_2(caplog):
+def test_validate_naming_2(caplog, setup_lfric):
     """Testing that an error is thrown if the filename doesn't match the
     group/module/type_def name"""
-    root_dir = setup_lfric()
-    test_parser = FortranMetaDataReader(root_dir, root_dir + META_TYPES_FOLDER)
+
+    test_parser = FortranMetaDataReader(setup_lfric, setup_lfric /
+                                        META_TYPES_FOLDER)
     test_parser.meta_mod_files = [
-        TEST_DATA_DIR +
-        "non_matching__file_name__meta_mod.f90"]
+        (TEST_DATA_DIR / "non_matching__file_name__meta_mod.f90").as_posix()]
     result = test_parser.read_fortran_files()
 
     assert result[1] is False
@@ -249,5 +237,3 @@ def test_validate_naming_2(caplog):
            in caplog.text
     assert "Naming Error! file name and group name do not match" \
            in caplog.text
-
-    tear_down_lfric(root_dir)

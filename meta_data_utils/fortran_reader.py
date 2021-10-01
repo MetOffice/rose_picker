@@ -17,16 +17,18 @@
 ##############################################################################
 """This module contains functionality for finding and parsing LFRic diagnostic
  meta data files"""
-import glob
+# pylint: disable=no-name-in-module
+
 import logging
 import re
 from typing import Dict, Tuple
+from pathlib import Path
 
 from fparser.common.readfortran import FortranFileReader
 from fparser.two.Fortran2003 import Array_Constructor, Assignment_Stmt, \
     Char_Literal_Constant, Enumerator_Def_Stmt, \
     Level_3_Expr, Part_Ref, Structure_Constructor, \
-    Component_Spec, Ac_Value_List, Derived_Type_Stmt, Derived_Type_Def, \
+    Component_Spec, Ac_Value_List, Derived_Type_Def, \
     Data_Component_Def_Stmt, Intrinsic_Type_Spec, Component_Decl
 from fparser.two.parser import ParserFactory
 from fparser.two.utils import FparserException, walk
@@ -52,12 +54,12 @@ class FortranMetaDataReader:
         r"(?P<section_name>[a-zA-Z_0-9]+?)__"
         r"(?P<group_name>[a-zA-Z_0-9]+)__meta_mod.*90")
 
-    def __init__(self, root_directory: str, meta_types_path: str):
+    def __init__(self, root_directory: Path, meta_types_path: Path):
         self.__root_dir = root_directory
         self.meta_types_path = meta_types_path
-        self.meta_mod_files = None
+        self.meta_mod_files = []
         self.find_fortran_files()
-        self.levels = read_enum(meta_types_path + "levels_enum_mod.f90")
+        self.levels = read_enum(meta_types_path / "levels_enum_mod.f90")
         self.non_spatial_dims = {}
 
     def find_fortran_files(self):
@@ -66,10 +68,10 @@ class FortranMetaDataReader:
         Returns a list of file names"""
 
         self.LOGGER.info("Scanning for Fortran meta data files...")
-        self.meta_mod_files = glob.glob(
-            self.__root_dir +
-            '/**/source/diagnostics_meta/**/*__meta_mod.*90',
-            recursive=True)
+        files = list(Path(self.__root_dir).rglob('*__meta_mod.*90'))
+
+        for file in files:
+            self.meta_mod_files.append(str(file))
 
         self.meta_mod_files.sort()
 
@@ -92,6 +94,7 @@ class FortranMetaDataReader:
 
         # Get meta_type name and get group name declared within
         # Find the type definition
+        # pylint: disable=too-many-nested-blocks
         for type_def in walk(parse_tree.content, types=Derived_Type_Def):
             if found_meta_type:
                 self.LOGGER.error("More than one meta type has been declared "
@@ -122,6 +125,7 @@ class FortranMetaDataReader:
         Checks for correctness and returns the relevant Fortran lines in a list
         :return Metadata: A dictionary, each key represents a Fortran file and
         it's value is a list of strings, each element representing a field"""
+        # pylint: disable=too-many-locals
 
         sections_dict: Dict[str, Section] = {}
         valid_files = 0
@@ -130,16 +134,17 @@ class FortranMetaDataReader:
 
             try:
                 # Load the Fortran file
-
-                reader = FortranFileReader(file_path, ignore_comments=True)
-
+                reader = FortranFileReader(file_path,
+                                           ignore_comments=True)
                 parse_tree = F2003_PARSER(reader)
 
                 file_valid = self.validate_naming(file_path, parse_tree)
-                file_name_parts = self.FILE_NAME_REGEX.search(file_path)
 
-                file_section_name = file_name_parts.group("section_name")
-                file_group_name = file_name_parts.group("group_name")
+                file_section_name = \
+                    self.FILE_NAME_REGEX.search(file_path).group(
+                        "section_name")
+                file_group_name = \
+                    self.FILE_NAME_REGEX.search(file_path).group("group_name")
                 file_name = file_path[file_path.rfind("/") + 1:]
 
                 if file_section_name not in sections_dict:
@@ -190,6 +195,7 @@ class FortranMetaDataReader:
 
         return meta_data, self.valid_meta_data
 
+    # pylint: disable=too-many-branches
     def extract_field(self, definition, file_name) -> Tuple[Field, bool]:
         """Takes an fparser object and extracts the field definition
         information
@@ -276,7 +282,7 @@ class FortranMetaDataReader:
                 else:
 
                     field.add_value(key, parameter.children[1].string)
-
+            # pylint: disable=broad-except
             except Exception as error:
                 if field.unique_id:
                     self.LOGGER.warning(
@@ -369,13 +375,13 @@ class FortranMetaDataReader:
                         [(section, group, field.unique_id)]
 
 
-def read_enum(path: str):
+def read_enum(path: Path):
     """Reads enumerated values from a file. File should contain only one ENUM
     :param path: Path to the file containing the ENUM
     :return enumerated_values: A list of all enumerated values found
     """
     enumerated_values = []
-    reader = FortranFileReader(path)
+    reader = FortranFileReader(str(path))
     parse_tree = F2003_PARSER(reader)
     for enum in walk(parse_tree, types=Enumerator_Def_Stmt):
         for item in enum.children[1].children:

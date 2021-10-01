@@ -24,6 +24,8 @@ import argparse
 import logging
 import os
 import shutil
+from pathlib import Path
+from typing import List
 
 from fortran_reader import FortranMetaDataReader
 from json_meta_data import write_json_meta
@@ -32,30 +34,51 @@ from rose_config_creator import create_rose_meta
 LOGGER = logging.getLogger(__name__)
 DIRECTORIES_IN_ROOT = ["meta_data_utils", "rose_picker"]
 
+# Ignores the protected member error used in argparse
+# pylint: disable=protected-access
 
-def get_gpl_utilities_root_dir(directories_in_root):
+
+def get_gpl_utilities_root_dir(directories_in_root: List):
     """Finds the root directory of the GPL-utilities source tree
-    :return root_dir: The root directory as a string"""
+    :return current_dir: The root directory as a string"""
 
     LOGGER.debug("GPL-utilities directory not supplied, attempting to find it")
-    root_dir = os.path.dirname(os.path.abspath(__file__))
+    current_dir = Path(".").resolve()
     in_root_directory = False
     counter = 0
     max_count = 20
 
     while not in_root_directory:
-        if all(x in os.listdir(root_dir) for x in directories_in_root):
+
+        has_dirs = True
+        for directory in directories_in_root:
+            if not (current_dir / directory).is_dir():
+                has_dirs = False
+
+        if has_dirs:
             in_root_directory = True
-        elif counter == max_count:
-            raise IOError("Unable to ascertain GPL-utils root after {0} "
-                          "attempts ({1})".format(str(max_count), root_dir))
         else:
-            root_dir += "/.."
+            current_dir = current_dir.parent
             counter += 1
 
-    LOGGER.debug("The GPL-utils root directory was found to be %s", root_dir)
+        if counter == max_count:
+            raise IOError("Unable to ascertain GPL-utils root after {0} "
+                          "attempts ({1})".format(str(max_count), current_dir))
 
-    return root_dir
+    LOGGER.debug("The GPL-utils root directory was found to be %s",
+                 str(current_dir))
+    return current_dir
+
+
+def write_file(path: Path, file_name: str, data: str):
+    """
+    Writes rose suite files to disk
+    :param path: The path where the file is to be written
+    :param file_name: The name of the file to be written
+    :param data: file as a string
+    """
+    with open(path / (file_name + ".conf"), 'w') as file:
+        file.write(data)
 
 
 def setup_logging(level: int, file_name: str):
@@ -89,11 +112,12 @@ directory structure looking for files that end in '__meta_mod.f90'.
 ''')
     optional.add_argument("-o", "--output", type=str,
                           help='''
-The location the generated meta data will be output to
+The location the generated meta data and log file will be output to.
 This tool will output a JSON representation of the generated meta data and a
 directory called 'meta'. This will contain a conf file made using the generated
 meta data as well as a macro for adding output streams and their fields to the
-configuration.''')
+configuration. If this option is not specified, the files will be output in
+the current working directory''')
     optional.add_argument("-f", "--filename", type=str,
                           help='''
 The name of the conf file output by the generator. Defaults to rose-meta.conf
@@ -112,7 +136,7 @@ default location''')
     return arg_parser.parse_args()
 
 
-def add_rose_macro(root_dir: str, rose_suite_dir: str) -> None:
+def add_rose_macro(root_dir: Path, rose_suite_dir: Path) -> None:
     """Copies add_section macro file into rose suite
     This contains macros to add an output stream section to the rose-app.conf,
     and to add a diagnostic field to an output stream
@@ -120,31 +144,30 @@ def add_rose_macro(root_dir: str, rose_suite_dir: str) -> None:
     :param rose_suite_dir: The path to the output Rose suite
     """
     LOGGER.info("Adding rose macro")
-    macro_source = root_dir + "/meta_data_utils/macro/add_section.py"
-    macro_dest = rose_suite_dir + "/meta/lib/python/macros/add_section.py"
-    os.makedirs(os.path.dirname(macro_dest), exist_ok=True)
-    shutil.copy(macro_source, macro_dest)
+    macro_source = root_dir / "meta_data_utils/macro/add_section.py"
+    macro_dest = rose_suite_dir / "meta/lib/python/macros/add_section.py"
+    os.makedirs(macro_dest.parent, exist_ok=True)
+    shutil.copy(macro_source.absolute(), macro_dest)
 
 
-def add_rose_widget(root_dir: str, rose_suite_dir: str) -> None:
+def add_rose_widget(root_dir: Path, rose_suite_dir: Path) -> None:
     """Copies vertical dimension widget files into rose suite
     :param root_dir: The path to the root directory of the GPL-utilities source
     :param rose_suite_dir: The path to the output Rose suite
     """
     LOGGER.info("Adding rose widget")
-    # Ticket 2323 will remove this string concatenation
-    source_directory = root_dir + "/meta_data_utils/widget/"
-    dest_directory = rose_suite_dir + "/meta/lib/python/widget/"
-    os.makedirs(os.path.abspath(dest_directory), exist_ok=True)
+    source_directory = root_dir / "meta_data_utils/widget/"
+    dest_directory = rose_suite_dir / "meta/lib/python/widget/"
+    os.makedirs(dest_directory, exist_ok=True)
 
     files = ["vertical_dimension_choice.py", "vertical_dimension_util.py"]
     exported = True
     for file in files:
-        shutil.copy(source_directory + file, dest_directory + file)
-        if not os.path.isfile(dest_directory + file):
+        shutil.copy(source_directory / file, dest_directory / file)
+        if not os.path.isfile(dest_directory / file):
             exported = False
             LOGGER.error("Failed to copy file from %s",
-                         source_directory + file)
+                         source_directory / file)
     if not exported:
         raise OSError("File export failed")
 
@@ -154,26 +177,24 @@ def run():
 
     args = parse_args()
 
-    log_file_name = 'meta_data_parser.log'
-
     if args.verbose:
         logging_level = logging.DEBUG
     else:
         logging_level = logging.INFO
 
+    if args.output:
+        log_file_name = Path(args.output) / 'meta_data_generator.log'
+        suite_dir = Path(args.output + '/example_rose_suite').resolve()
+    else:
+        log_file_name = 'meta_data_generator.log'
+        suite_dir = Path("./example_rose_suite").resolve()
+
     setup_logging(logging_level, log_file_name)
 
-    lfric_dir = args.path
+    lfric_dir = Path(args.path)
     if not os.path.exists(lfric_dir):
         LOGGER.error("Path to LFRic directory does not exist: %s", lfric_dir)
         raise FileNotFoundError("Path to LFRic directory does not exist")
-
-    if args.output:
-        suite_dir = args.output
-        suite_dir += '/example_rose_suite/'
-    else:
-        working_dir = os.path.dirname(os.path.abspath(__file__))
-        suite_dir = working_dir + "/example_rose_suite/"
 
     if args.filename:
         metadata_file_name = args.filename
@@ -182,13 +203,14 @@ def run():
 
     # Ticket 2323 will remove all this string concatenation for directory paths
     if args.support_types:
-        meta_types_directory = args.support_types
+        meta_types_directory = Path(args.support_types)
     else:
         meta_types_directory = \
-            lfric_dir + "/um_physics/source/diagnostics_meta/meta_types/"
+            lfric_dir / "um_physics/source/diagnostics_meta/meta_types"
 
     # Find meta data in fortran meta_mod.f90 files
     LOGGER.info("Starting parser")
+    LOGGER.info("LFRic dir: %s", lfric_dir)
     reader = FortranMetaDataReader(lfric_dir, meta_types_directory)
 
     meta_data, valid = reader.read_fortran_files()
@@ -199,10 +221,10 @@ def run():
     else:
         LOGGER.info("Meta data valid, creating files")
         # If target directory doesn't exist make it
-        os.makedirs(os.path.dirname(suite_dir + "meta/rose-meta.conf"),
+        os.makedirs(os.path.dirname(suite_dir / "meta/rose-meta.conf"),
                     exist_ok=True)
-
-        create_rose_meta(meta_data, suite_dir, metadata_file_name)
+        rose_meta = create_rose_meta(meta_data, metadata_file_name)
+        write_file(suite_dir / "meta/", metadata_file_name, rose_meta)
         gpl_root_dir = get_gpl_utilities_root_dir(DIRECTORIES_IN_ROOT)
         add_rose_macro(gpl_root_dir, suite_dir)
         add_rose_widget(gpl_root_dir, suite_dir)

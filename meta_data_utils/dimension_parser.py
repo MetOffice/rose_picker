@@ -20,6 +20,10 @@ data in LFRic. The two main features are the ability to parse the default and
 hard coded values of vertical dimensions and to expand vertical dimension
 declarations in LFRic meta data
 e.g. model_height_dimension(top=TOP_WET_LEVEL)"""
+# A no no-name-in-module error is caused by importing Ac_Value_List
+# from fparser
+# pylint: disable=no-name-in-module
+
 import logging
 import re
 from typing import Dict, List
