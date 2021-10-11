@@ -18,6 +18,7 @@
 """Test the diag_meta_gen module"""
 
 import pytest
+from os import getcwd, chdir
 from diag_meta_gen import get_gpl_utilities_root_dir
 
 
@@ -32,3 +33,12 @@ def test_get_gpl_utilities_root_dir_2():
     """Testing that an error is not thrown when the root dir is found should
     not error"""
     get_gpl_utilities_root_dir(["meta_data_utils", "rose_picker"])
+
+
+def test_get_gpl_utilities_root_dir_3(tmp_path):
+    """Testing that an error is not thrown when the current working directory
+    is different from the directory `diag_meta_gen.py located"""
+    cwd = getcwd()
+    chdir(tmp_path)
+    get_gpl_utilities_root_dir(["meta_data_utils", "rose_picker"])
+    chdir(cwd)

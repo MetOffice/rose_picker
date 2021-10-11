@@ -20,10 +20,7 @@
 
 .PHONY: test
 test:
-	@echo "Removing test repository"; \
-	rm -rf tests/lfric; \
-	rm -rf lfric; \
-    module use /data/users/lfric/modules/modulefiles.rhel7; \
+	@module use /data/users/lfric/modules/modulefiles.rhel7; \
 	module load environment/lfric/intel; \
 	echo Styling...; \
 	echo "Running pylint"; \

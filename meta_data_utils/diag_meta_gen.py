@@ -43,7 +43,7 @@ def get_gpl_utilities_root_dir(directories_in_root: List):
     :return current_dir: The root directory as a string"""
 
     LOGGER.debug("GPL-utilities directory not supplied, attempting to find it")
-    current_dir = Path(".").resolve()
+    current_dir = Path(__file__).resolve().parent
     in_root_directory = False
     counter = 0
     max_count = 20
