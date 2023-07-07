@@ -56,6 +56,11 @@ def test_good_picker(tmp_path: Path):
     input_file = tmp_path / 'good.nml'
     input_file.write_text('''
 [namelist:aerial]
+!instance_key_member=betty
+duplicate=true
+
+[namelist:aerial=barney]
+type=character
 
 [namelist:aerial=fred]
 type=real
@@ -90,18 +95,22 @@ length=:
         result = json.load(fhandle)
 
     good_result = collections.OrderedDict(
-        {'aerial': {'dino':   {'length': ':',
-                               'type':   'integer',
-                               'bounds': 'namelist:sugar=TABLET'},
-                    'wilma':  {'length': ':',
-                               'type':   'real',
-                               'bounds': 'source:constants_mod=FUDGE'},
-                    'betty':  {'length': ':',
-                               'type':   'logical',
-                               'bounds': 'fred'},
-                    'bambam': {'length': ':',
-                               'type':   'integer'},
-                    'fred':   {'type':   'real'}}})
+        {'aerial': {'members': {'dino':   {'length': ':',
+                                           'type':   'integer',
+                                           'bounds': 'namelist:sugar=TABLET'},
+                                'wilma':  {'length': ':',
+                                           'type':   'real',
+                                           'bounds':
+                                               'source:constants_mod=FUDGE'},
+                                'betty':  {'length': ':',
+                                           'type':   'logical',
+                                           'bounds': 'fred'},
+                                'bambam': {'length': ':',
+                                           'type':   'integer'},
+                                'fred':   {'type':   'real'},
+                                'barney': {'type':   'character'}},
+                    'multiple_instances_allowed': 'true',
+                    'instance_key_member': 'betty'}})
 
     assert result == good_result
 

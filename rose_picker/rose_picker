@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 ##############################################################################
 # (C) British Crown Copyright 2018 Met Office.
 #
@@ -56,9 +56,9 @@ def _load_configuration(filename: Path,
                          conf_dir_paths=include_dirs,
                          conf_node=config_node)
         return config_node
-    except ConfigSyntaxError:
+    except ConfigSyntaxError as config_syntax:
         raise RosePickerException(f"File {filename} is not a valid rose meta"
-                                  " configuration file.")
+                                  " configuration file.") from config_syntax
 
 
 def _list_configuration(config_node: ConfigTree) -> List[str]:
@@ -72,13 +72,18 @@ def _list_configuration(config_node: ConfigTree) -> List[str]:
 
 
 def _extract_namelists(config_node: ConfigTree,
-                       required_properties: Sequence[str],
+                       namelist_keys: Sequence[str],
+                       member_keys: Sequence[str],
                        listnames: List[str],
                        namelist_config: Dict[str, Dict[str, Dict[str, str]]]):
+
+    # pylint: disable-msg=too-many-locals
+
     """
     Extracts namelist properties from meta-data.
     """
     node_keys = _list_configuration(config_node)
+
     for key in node_keys:
 
         match = _NAMELISTS_REGEX.match(key)
@@ -90,6 +95,23 @@ def _extract_namelists(config_node: ConfigTree,
             if not member:  # pylint: disable=no-else-continue
                 listnames.append(namelist)
                 namelist_config[namelist] = {}
+                namelist_config[namelist]['members'] = {}
+
+                list_node = config_node.get([node])
+                list_node_keys = list_node.get_value().keys()
+
+                for i in namelist_keys:
+                    if i in list_node_keys:
+                        list_prop = list_node.get([i])
+                        list_prop = list_prop.get_value()
+
+                        if i == 'duplicate':
+                            namelist_config[namelist]['multiple_instances_allowed'] \
+                                = list_prop
+                        else:
+                            namelist_config[namelist][i] \
+                                = list_prop
+
                 continue
 
             elif namelist not in namelist_config.keys():
@@ -99,15 +121,15 @@ def _extract_namelists(config_node: ConfigTree,
                 raise RosePickerException(message)
 
             else:
-                namelist_config[namelist][member] = {}
+                namelist_config[namelist]['members'][member] = {}
 
                 member_node = config_node.get([node])
                 member_node_keys = member_node.get_value().keys()
-                for i in required_properties:
+                for i in member_keys:
                     if i in member_node_keys:
                         member_prop = member_node.get([i])
                         member_prop = member_prop.get_value()
-                        namelist_config[namelist][member][i] \
+                        namelist_config[namelist]['members'][member][i] \
                             = member_prop
 
 
@@ -124,35 +146,34 @@ def main(meta_filename: Path, include_dirs: Sequence[Path], output_dir: Path):
     """
     config_node = _load_configuration(meta_filename, include_dirs)
 
-    required_properties = ['bounds',
-                           'enumeration',
-                           'expression',
-                           'kind',
-                           'length',
-                           'string_length',
-                           'type',
-                           'values']
+    namelist_keys = ['duplicate',
+                     'instance_key_member']
+
+    member_keys = ['bounds',
+                   'enumeration',
+                   'expression',
+                   'kind',
+                   'length',
+                   'string_length',
+                   'type',
+                   'values']
+
     listnames: List[str] = []
     namelist_config = collections.OrderedDict()
-    _extract_namelists(config_node, required_properties,
+    _extract_namelists(config_node, namelist_keys, member_keys,
                        listnames, namelist_config)
 
     basename = os.path.basename(meta_filename).split('.')
 
     # Output as .json file
-    nml_config_filename = '{}.json'.format(basename[0])
-    output = open('{}/{}'.format(
-        output_dir, nml_config_filename), 'wt')
-    json.dump(namelist_config, output, indent=4, ensure_ascii=True)
-    output.close()
+    nml_config_filename = f'{basename[0]}.json'
+    with open(f'{output_dir}/{nml_config_filename}', 'wt', encoding='utf-8') as output:
+        json.dump(namelist_config, output, indent=4, ensure_ascii=True)
 
     # Write out namelists in configuration
-    output = open('{}/config_namelists.txt'.format(output_dir), 'wt')
-
-    for listname in listnames:
-        output.write('{}\n'.format(listname))
-
-    output.close()
+    with open(f'{output_dir}/config_namelists.txt', 'wt', encoding='utf-8') as output:
+        for listname in listnames:
+            output.write(f'{listname}\n')
 
 
 def _cli() -> Namespace:
