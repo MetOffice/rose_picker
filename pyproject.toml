@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+
+[project]
+name = "rose_picker"
+description = "Converts Rose metadata file into JSON format."
+readme = "README.rst"
+license = {text = "GPLv3"}
+requires-python = ">=3.7"
+dynamic = ["version"]
+
+[project.scripts]
+rose_picker = "rose_picker.entry:cli"
+
+[project.optional-dependencies]
+dev = [
+    "flake8",
+    "mypy",
+    "pytest"
+]
+
+[options]
+package_dir = ["source"]
+
+[options.packages.find]
+where = ["source"]
+
+[tool.setuptools.dynamic]
+version = {attr = "rose_picker.VERSION"}
+
+[tool.setuptools.packages.find]
+where = ["source"]
