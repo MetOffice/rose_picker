@@ -20,13 +20,11 @@
 # -----------------------------------------------------------------------------
 """Reporter for diagnostic messages."""
 
-
 import sys
 import time
 
 
 class Reporter(object):
-
     """Report diagnostic messages.
 
     Note: How about the "logging" module in the standard library? It needs a
@@ -66,10 +64,8 @@ class Reporter(object):
             verbosity = 0
         if contexts is not None:
             self.contexts.update(contexts)
-        self.contexts.setdefault("stderr",
-                                 ReporterContext(self.KIND_ERR, verbosity))
-        self.contexts.setdefault("stdout",
-                                 ReporterContext(self.KIND_OUT, verbosity))
+        self.contexts.setdefault("stderr", ReporterContext(self.KIND_ERR, verbosity))
+        self.contexts.setdefault("stdout", ReporterContext(self.KIND_OUT, verbosity))
         self.event_handler = None
         self.raise_on_exc = raise_on_exc
 
@@ -183,7 +179,6 @@ class Reporter(object):
 
 
 class ReporterContext(object):
-
     """A context for the reporter object.
 
     It has the following attributes:
@@ -202,11 +197,7 @@ class ReporterContext(object):
     TTY_COLOUR_ERR = "\033[1;31m"
     TTY_COLOUR_NORM = "\033[0m"
 
-    def __init__(self,
-                 kind=None,
-                 verbosity=Reporter.DEFAULT,
-                 handle=None,
-                 prefix=None):
+    def __init__(self, kind=None, verbosity=Reporter.DEFAULT, handle=None, prefix=None):
         if kind == Reporter.KIND_ERR:
             if handle is None:
                 handle = sys.stderr
@@ -246,21 +237,19 @@ class ReporterContext(object):
         except TypeError:
             return self.handle.write(message)
         except AttributeError:
-            return self.handle.write(message.encode('UTF-8'))
+            return self.handle.write(message.encode("UTF-8"))
 
     def _tty_colour_err(self, str_):
         """Colour error string for terminal."""
         try:
             if self.handle.isatty():
-                return "%s%s%s" % (
-                    self.TTY_COLOUR_ERR, str_, self.TTY_COLOUR_NORM)
+                return "%s%s%s" % (self.TTY_COLOUR_ERR, str_, self.TTY_COLOUR_NORM)
         except AttributeError:
             pass
         return str_
 
 
 class Event(object):
-
     """A base class for events suitable for feeding into a Reporter."""
 
     VV = Reporter.VV

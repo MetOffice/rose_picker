@@ -6,7 +6,7 @@ name = "rose_picker"
 description = "Converts Rose metadata file into JSON format."
 readme = "README.rst"
 license = {text = "GPLv3"}
-requires-python = ">=3.7"
+requires-python = ">=3.11"
 dynamic = ["version"]
 
 [project.scripts]
@@ -16,7 +16,8 @@ rose_picker = "rose_picker.entry:cli"
 dev = [
     "flake8",
     "mypy",
-    "pytest"
+    "pytest",
+    "ruff",
 ]
 
 [options]
