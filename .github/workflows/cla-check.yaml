@@ -4,14 +4,18 @@
 #  under which the code may be used.
 # ------------------------------------------------------------------------------
 # Check Contributor License Agreement
+# This check is excluded files in source/rose_picker/rose/ directory as these
+# are third-party code and not covered by the Momentum-CA.
 
 name: Legal
 
 on:
   pull_request_target:
+    paths-ignore:
+      - "source/rose_picker/rose/**"
 
 jobs:
   cla:
     uses: MetOffice/growss/.github/workflows/cla-check.yaml@main
     with:
-      runner: 'ubuntu-24.04'
+      runner: "ubuntu-24.04"
