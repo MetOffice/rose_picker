@@ -1,7 +1,7 @@
 Rose Picker
 ===========
 
-Rose Picker uses [Rose](https://github.com/metomi/rose/tree/master/metomi/rose)
+Rose Picker uses `Rose <https://github.com/metomi/rose/tree/master/metomi/rose>`_
 code (which has to be copied into the repository since we can't easily import
 it from Git) to read the metadata file and converts it into an intermediate
 JSON file. This can be read by the LFRic configuration reading code generator
