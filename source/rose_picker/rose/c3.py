@@ -26,7 +26,6 @@ See http://www.python.org/download/releases/2.3/mro/ for detail.
 
 
 class MROError(Exception):
-
     """Cannot resolve MRO."""
 
     def __str__(self):
@@ -106,7 +105,6 @@ def mro(target_name, get_base_names, *args, **kwargs):
 
 
 class _Test(object):
-
     """Self tests. Print results in TAP format.
 
     Ordering obtained from http://www.python.org/download/releases/2.3/mro/.
@@ -145,8 +143,7 @@ class _Test(object):
         self.base_names_of["A1"] = ["O"]
         self.base_names_of["A2"] = ["A1"]
         self.base_names_of["A3"] = ["A2"]
-        self.test("single", mro("A3", self.get_base_names),
-                  ["A3", "A2", "A1", "O"])
+        self.test("single", mro("A3", self.get_base_names), ["A3", "A2", "A1", "O"])
 
         self.base_names_of["B1"] = ["O"]
         self.base_names_of["C1"] = ["O"]
@@ -156,7 +153,8 @@ class _Test(object):
         self.test(
             "diamond-1",
             mro("Z", self.get_base_names),
-            ["Z", "Y", "X", "C1", "B1", "A1", "O"])
+            ["Z", "Y", "X", "C1", "B1", "A1", "O"],
+        )
 
         self.base_names_of["P"] = ["C1", "A1"]
         self.base_names_of["Q"] = ["B1", "C1"]
@@ -164,19 +162,17 @@ class _Test(object):
         self.test(
             "diamond-2",
             mro("R", self.get_base_names),
-            ["R", "Q", "B1", "P", "C1", "A1", "O"])
+            ["R", "Q", "B1", "P", "C1", "A1", "O"],
+        )
 
         self.base_names_of["P"] = ["A1", "A2"]
-        self.test("triangle", mro("P", self.get_base_names),
-                  ["P", "A2", "A1", "O"])
+        self.test("triangle", mro("P", self.get_base_names), ["P", "A2", "A1", "O"])
 
         self.base_names_of["P"] = ["A1", "O"]
-        self.test(
-            "triangle-2", mro("P", self.get_base_names), ["P", "A1", "O"])
+        self.test("triangle-2", mro("P", self.get_base_names), ["P", "A1", "O"])
 
         self.base_names_of["P"] = ["O", "A1"]
-        self.test(
-            "triangle-3", mro("P", self.get_base_names), ["P", "A1", "O"])
+        self.test("triangle-3", mro("P", self.get_base_names), ["P", "A1", "O"])
 
         self.base_names_of["D1"] = ["O"]
         self.base_names_of["E1"] = ["O"]
@@ -184,8 +180,11 @@ class _Test(object):
         self.base_names_of["L"] = ["D1", "B1", "E1"]
         self.base_names_of["M"] = ["A1", "B1", "C1"]
         self.base_names_of["N"] = ["M", "L", "K"]
-        self.test("complex", mro("N", self.get_base_names),
-                  ["N", "M", "L", "K", "D1", "A1", "B1", "C1", "E1", "O"])
+        self.test(
+            "complex",
+            mro("N", self.get_base_names),
+            ["N", "M", "L", "K", "D1", "A1", "B1", "C1", "E1", "O"],
+        )
 
         # Test bad cases
         self.base_names_of["CYCLIC"] = ["CYCLIC"]

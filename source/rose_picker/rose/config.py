@@ -112,11 +112,10 @@ REC_SETTING_ELEMENT = re.compile(r"^(.+?)\(([^)]+)\)$")
 
 STATE_SECT_IGNORED = "^"
 
-OPT_CONFIG_SETTING_COMMENT = " setting from opt config \"%s\" (%s)"
+OPT_CONFIG_SETTING_COMMENT = ' setting from opt config "%s" (%s)'
 
 
 class ConfigNode(object):
-
     """Represent a node in a configuration file.
 
     Nodes are stored hierarchically, for instance the following config
@@ -175,7 +174,7 @@ class ConfigNode(object):
     STATE_USER_IGNORED = "!"
     """ConfigNode state if it has been specifically ignored in the config."""
     STATE_SYST_IGNORED = "!!"
-    """ConfigNode state if a metadata opperation has logically ignored the
+    """ConfigNode state if a metadata operation has logically ignored the
     config."""
 
     def __init__(self, value=None, state=STATE_NORMAL, comments=None):
@@ -188,9 +187,9 @@ class ConfigNode(object):
         self.comments = comments
 
     def __repr__(self):
-        return str({"value": self.value,
-                    "state": self.state,
-                    "comments": self.comments})
+        return str(
+            {"value": self.value, "state": self.state, "comments": self.comments}
+        )
 
     __str__ = __repr__
 
@@ -217,10 +216,14 @@ class ConfigNode(object):
         try:
             for keys_1, node_1 in self.walk(no_ignore=True):
                 node_2 = other.get(keys_1, no_ignore=True)
-                if (type(node_1) != type(node_2) or
-                        (not isinstance(node_1.value, dict) and
-                         node_1.value != node_2.value) or
-                        node_1.comments != node_2.comments):
+                if (
+                    type(node_1) != type(node_2)  # noqa: E721
+                    or (
+                        not isinstance(node_1.value, dict)
+                        and node_1.value != node_2.value
+                    )
+                    or node_1.comments != node_2.comments
+                ):
                     return False
             for keys_2, node_2 in other.walk(no_ignore=True):
                 if self.get(keys_2, no_ignore=True) is None:
@@ -556,8 +559,7 @@ class ConfigNode(object):
         """
         for added_key, added_data in config_diff.get_added():
             value, state, comments = added_data
-            self.set(keys=added_key, value=value, state=state,
-                     comments=comments)
+            self.set(keys=added_key, value=value, state=state, comments=comments)
         for modified_key, modified_data in config_diff.get_modified():
             # Should we check that the original data matches what we have?
             orig_value = modified_data[0][0]
@@ -566,14 +568,12 @@ class ConfigNode(object):
                 # A section - be careful not to change an existing node value.
                 subnode = self.get(keys=modified_key)
                 if subnode is None:
-                    self.set(
-                        keys=modified_key, state=state, comments=comments)
+                    self.set(keys=modified_key, state=state, comments=comments)
                 else:
                     subnode.state = state
                     subnode.comments = comments
             else:
-                self.set(keys=modified_key, value=value, state=state,
-                         comments=comments)
+                self.set(keys=modified_key, value=value, state=state, comments=comments)
         for removed_key, _ in config_diff.get_removed():
             self.unset(keys=removed_key)
 
@@ -651,9 +651,7 @@ class ConfigNode(object):
         This avoids a read-only error and allows __slots__ compatibility.
 
         """
-        return {"state": self.state,
-                "value": self.value,
-                "comments": self.comments}
+        return {"state": self.state, "value": self.value, "comments": self.comments}
 
     def __setstate__(self, state):
         """Read in the results of __getstate__."""
@@ -663,43 +661,42 @@ class ConfigNode(object):
 
 
 class ConfigNodeDiff(object):
-
     """Represent differences between two ConfigNode instances.
 
-        Examples:
-            >>> # Create a new ConfigNodeDiff.
-            >>> config_node_diff = ConfigNodeDiff()
-            >>> config_node_diff.set_added_setting(keys=['bar'],
-            ...                                    data=('Bar', None, None,))
+    Examples:
+        >>> # Create a new ConfigNodeDiff.
+        >>> config_node_diff = ConfigNodeDiff()
+        >>> config_node_diff.set_added_setting(keys=['bar'],
+        ...                                    data=('Bar', None, None,))
 
-            >>> # Create a new ConfigNode.
-            >>> config_node = ConfigNode()
-            >>> _ = config_node.set(keys=['baz'], value='Baz')
+        >>> # Create a new ConfigNode.
+        >>> config_node = ConfigNode()
+        >>> _ = config_node.set(keys=['baz'], value='Baz')
 
-            >>> # Apply the diff to the node.
-            >>> config_node.add(config_node_diff)
-            >>> [(keys, sub_node.get_value()) for keys, sub_node in
-            ...  config_node.walk()]
-            [(['', 'bar'], 'Bar'), (['', 'baz'], 'Baz')]
+        >>> # Apply the diff to the node.
+        >>> config_node.add(config_node_diff)
+        >>> [(keys, sub_node.get_value()) for keys, sub_node in
+        ...  config_node.walk()]
+        [(['', 'bar'], 'Bar'), (['', 'baz'], 'Baz')]
 
-            >>> # Create a ConfigNodeDiff by comparing two ConfigNodes.
-            >>> another_config_node = ConfigNode()
-            >>> _ = another_config_node.set(keys=['bar'], value='NewBar')
-            >>> _ = another_config_node.set(keys=['new'], value='New')
-            >>> config_node_diff = ConfigNodeDiff()
-            >>> config_node_diff.set_from_configs(config_node,
-            ...                                   another_config_node)
-            >>> config_node_diff.get_added()
-            [(('', 'new'), ('New', '', []))]
-            >>> config_node_diff.get_removed()
-            [(('', 'baz'), ('Baz', '', []))]
-            >>> config_node_diff.get_modified()
-            [(('', 'bar'), (('Bar', '', []), ('NewBar', '', [])))]
+        >>> # Create a ConfigNodeDiff by comparing two ConfigNodes.
+        >>> another_config_node = ConfigNode()
+        >>> _ = another_config_node.set(keys=['bar'], value='NewBar')
+        >>> _ = another_config_node.set(keys=['new'], value='New')
+        >>> config_node_diff = ConfigNodeDiff()
+        >>> config_node_diff.set_from_configs(config_node,
+        ...                                   another_config_node)
+        >>> config_node_diff.get_added()
+        [(('', 'new'), ('New', '', []))]
+        >>> config_node_diff.get_removed()
+        [(('', 'baz'), ('Baz', '', []))]
+        >>> config_node_diff.get_modified()
+        [(('', 'bar'), (('Bar', '', []), ('NewBar', '', [])))]
 
-            >>> # Inverse a ConfigNodeDiff.
-            >>> reversed_diff = config_node_diff.get_reversed()
-            >>> reversed_diff.get_added()
-            [(('', 'baz'), ('Baz', '', []))]
+        >>> # Inverse a ConfigNodeDiff.
+        >>> reversed_diff = config_node_diff.get_reversed()
+        >>> reversed_diff.get_added()
+        [(('', 'baz'), ('Baz', '', []))]
 
     """
 
@@ -708,8 +705,7 @@ class ConfigNodeDiff(object):
     KEY_REMOVED = "removed"
 
     def __init__(self):
-        self._data = {self.KEY_ADDED: {}, self.KEY_REMOVED: {},
-                      self.KEY_MODIFIED: {}}
+        self._data = {self.KEY_ADDED: {}, self.KEY_REMOVED: {}, self.KEY_MODIFIED: {}}
 
     def set_from_configs(self, config_node_1, config_node_2):
         """Create diff data from two ConfigNode instances.
@@ -738,8 +734,10 @@ class ConfigNodeDiff(object):
         """
         settings_1 = {}
         settings_2 = {}
-        for config_node, settings in [(config_node_1, settings_1),
-                                      (config_node_2, settings_2)]:
+        for config_node, settings in [
+            (config_node_1, settings_1),
+            (config_node_2, settings_2),
+        ]:
             for keys, node in config_node.walk():
                 value = node.value
                 if isinstance(node.value, dict):
@@ -751,8 +749,7 @@ class ConfigNodeDiff(object):
             self.set_removed_setting(keys, settings_1[keys])
         for keys in set(settings_1).intersection(set(settings_2)):
             if settings_1[keys] != settings_2[keys]:
-                self.set_modified_setting(keys, settings_1[keys],
-                                          settings_2[keys])
+                self.set_modified_setting(keys, settings_1[keys], settings_2[keys])
 
     def get_as_opt_config(self):
         """Return a ConfigNode such that main + new_node = main + diff.
@@ -785,8 +782,9 @@ class ConfigNodeDiff(object):
         for keys, info in self.get_removed():
             # Need to add as user-ignored.
             value, state, comments = info
-            node.set(keys, value=value, state=node.STATE_USER_IGNORED,
-                     comments=comments)
+            node.set(
+                keys, value=value, state=node.STATE_USER_IGNORED, comments=comments
+            )
         return node
 
     def set_added_setting(self, keys, data):
@@ -961,9 +959,10 @@ class ConfigNodeDiff(object):
             [('bar',), ('foo',)]
         """
         return sorted(
-            set(self._data[self.KEY_ADDED]) |
-            set(self._data[self.KEY_MODIFIED]) |
-            set(self._data[self.KEY_REMOVED]))
+            set(self._data[self.KEY_ADDED])
+            | set(self._data[self.KEY_MODIFIED])
+            | set(self._data[self.KEY_REMOVED])
+        )
 
     def get_reversed(self):
         """Return an inverse (add->remove, etc) copy of this ConfigNodeDiff.
@@ -1009,7 +1008,6 @@ class ConfigNodeDiff(object):
 
 
 class ConfigDumper(object):
-
     """Dumper of a ConfigNode object in Rose INI format.
 
     Examples:
@@ -1035,8 +1033,15 @@ class ConfigDumper(object):
         """
         self.char_assign = char_assign
 
-    def dump(self, root, target=sys.stdout, sort_sections=None,
-             sort_option_items=None, env_escape_ok=False, concat_mode=False):
+    def dump(
+        self,
+        root,
+        target=sys.stdout,
+        sort_sections=None,
+        sort_option_items=None,
+        env_escape_ok=False,
+        concat_mode=False,
+    ):
         """Format a ConfigNode object and write result to target.
 
         Args:
@@ -1066,9 +1071,9 @@ class ConfigDumper(object):
                 target_dir = "."
             if not os.path.isdir(target_dir):
                 os.makedirs(target_dir)
-            handle = NamedTemporaryFile(mode='w',
-                                        prefix=os.path.basename(target),
-                                        dir=target_dir, delete=False)
+            handle = NamedTemporaryFile(
+                mode="w", prefix=os.path.basename(target), dir=target_dir, delete=False
+            )
         blank = ""
         if root.comments:
             for comment in root.comments:
@@ -1089,8 +1094,7 @@ class ConfigDumper(object):
             if concat_mode:
                 handle.write(CHAR_SECTION_OPEN + CHAR_SECTION_CLOSE + "\n")
             for key in root_option_keys:
-                self._string_node_dump(
-                    key, root.value[key], handle, env_escape_ok)
+                self._string_node_dump(key, root.value[key], handle, env_escape_ok)
         for section_key in section_keys:
             section_node = root.value[section_key]
             write_safely(blank, handle)
@@ -1098,12 +1102,15 @@ class ConfigDumper(object):
             for comment in section_node.comments:
                 write_safely(self._comment_format(comment), handle)
             write_safely(
-                "%(open)s%(state)s%(key)s%(close)s\n" % {
+                "%(open)s%(state)s%(key)s%(close)s\n"
+                % {
                     "open": CHAR_SECTION_OPEN,
                     "state": section_node.state,
                     "key": section_key,
-                    "close": CHAR_SECTION_CLOSE},
-                handle)
+                    "close": CHAR_SECTION_CLOSE,
+                },
+                handle,
+            )
             keys = list(section_node.value.keys())
             keys.sort(key=cmp_to_key(sort_option_items))
             for key in keys:
@@ -1150,7 +1157,6 @@ class ConfigDumper(object):
 
 
 class ConfigLoader(object):
-
     """Loader of an INI format configuration into a ConfigNode object.
 
     Example:
@@ -1169,8 +1175,7 @@ class ConfigLoader(object):
         {'value': 'Bar', 'state': '!', 'comments': []}
     """
 
-    RE_SECTION = re.compile(
-        r"^(?P<head>\s*\[(?P<state>!?!?))(?P<section>.*)\]\s*$")
+    RE_SECTION = re.compile(r"^(?P<head>\s*\[(?P<state>!?!?))(?P<section>.*)\]\s*$")
     RE_OPT_DEFINE = re.compile(r"\A(?:\[([^\]]+)\])?([^=]+)?(?:=(.*))?\Z")
     TYPE_SECTION = "TYPE_SECTION"
     TYPE_OPTION = "TYPE_OPTION"
@@ -1189,9 +1194,12 @@ class ConfigLoader(object):
         self.char_assign = char_assign
         self.char_comment = char_comment
         self.re_option = re.compile(
-            r"^(?P<state>!?!?)(?P<option>[^\s" +
-            char_assign + r"]+)\s*" +
-            char_assign + r"\s*(?P<value>.*)$")
+            r"^(?P<state>!?!?)(?P<option>[^\s"
+            + char_assign
+            + r"]+)\s*"
+            + char_assign
+            + r"\s*(?P<value>.*)$"
+        )
 
     @staticmethod
     def can_miss_opt_conf_key(key):
@@ -1201,9 +1209,16 @@ class ConfigLoader(object):
         else:
             return
 
-    def load_with_opts(self, source, node=None, more_keys=None,
-                       used_keys=None, return_config_map=False,
-                       mark_opt_confs=False, defines=None):
+    def load_with_opts(
+        self,
+        source,
+        node=None,
+        more_keys=None,
+        used_keys=None,
+        return_config_map=False,
+        mark_opt_confs=False,
+        defines=None,
+    ):
         """Read a source configuration file with optional configurations.
 
         Arguments:
@@ -1299,17 +1314,27 @@ class ConfigLoader(object):
                 key = opt_conf_key
             opt_conf_file_name_base = source_root + "-" + key + source_ext
             opt_conf_file_name = os.path.join(
-                source_dir, OPT_CONFIG_DIR, opt_conf_file_name_base)
+                source_dir, OPT_CONFIG_DIR, opt_conf_file_name_base
+            )
             try:
                 if mark_opt_confs:
-                    self.load(opt_conf_file_name, node, default_comments=[
-                        OPT_CONFIG_SETTING_COMMENT % (
-                            key, opt_conf_file_name,)])
+                    self.load(
+                        opt_conf_file_name,
+                        node,
+                        default_comments=[
+                            OPT_CONFIG_SETTING_COMMENT
+                            % (
+                                key,
+                                opt_conf_file_name,
+                            )
+                        ],
+                    )
                 else:
                     self.load(opt_conf_file_name, node)
             except IOError:
                 if can_miss_opt_conf_key or (
-                        used_keys is not None and opt_conf_key in more_keys):
+                    used_keys is not None and opt_conf_key in more_keys
+                ):
                     continue
                 raise
             else:
@@ -1365,7 +1390,7 @@ class ConfigLoader(object):
         while True:
             line = handle.readline()
             if isinstance(line, bytes):
-                line = line.decode(errors='ignore')
+                line = line.decode(errors="ignore")
             if not line:
                 break
             line_num += 1
@@ -1395,7 +1420,11 @@ class ConfigLoader(object):
                 if bad_index > -1:
                     raise ConfigSyntaxError(
                         ConfigSyntaxError.BAD_CHAR,
-                        file_name, line_num, len(head) + bad_index, line)
+                        file_name,
+                        line_num,
+                        len(head) + bad_index,
+                        line,
+                    )
                 # Find position under root node
                 if type_ == self.TYPE_OPTION:
                     keys.pop()
@@ -1421,7 +1450,8 @@ class ConfigLoader(object):
             match = self.re_option.match(line)
             if not match:
                 raise ConfigSyntaxError(
-                    ConfigSyntaxError.BAD_SYNTAX, file_name, line_num, 0, line)
+                    ConfigSyntaxError.BAD_SYNTAX, file_name, line_num, 0, line
+                )
             option, value, state = match.group("option", "value", "state")
             if type_ == self.TYPE_OPTION:
                 keys.pop()
@@ -1472,8 +1502,7 @@ class ConfigLoader(object):
             elif index_of[sym_close] == -1:
                 # has open, but no close
                 return len(section)
-            elif (index_of[sym_open] == -1 or
-                    index_of[sym_close] < index_of[sym_open]):
+            elif index_of[sym_open] == -1 or index_of[sym_close] < index_of[sym_open]:
                 # has close, but no open
                 # or close before open
                 return len(scheme) + index_of[sym_close] + 1
@@ -1518,7 +1547,6 @@ class ConfigLoader(object):
 
 
 class ConfigSyntaxError(Exception):
-
     """Exception raised for syntax error loading a configuration file.
 
     Attributes:
@@ -1566,14 +1594,19 @@ class ConfigSyntaxError(Exception):
             self.line_num,
             self.MESSAGES[self.code],
             self.line,
-            " " * self.col_num)
+            " " * self.col_num,
+        )
 
 
-def dump(root, target=sys.stdout, sort_sections=None, sort_option_items=None,
-         env_escape_ok=False):
+def dump(
+    root,
+    target=sys.stdout,
+    sort_sections=None,
+    sort_option_items=None,
+    env_escape_ok=False,
+):
     """Shorthand for :py:func:`ConfigDumper.dump`."""
-    return ConfigDumper()(root, target, sort_sections, sort_option_items,
-                          env_escape_ok)
+    return ConfigDumper()(root, target, sort_sections, sort_option_items, env_escape_ok)
 
 
 def load(source, root=None):
@@ -1596,8 +1629,7 @@ def sort_element(elem_1, elem_2):
 
 def sort_settings(setting_1, setting_2):
     """Sort sections and options, by numeric element if possible."""
-    if (not isinstance(setting_1, str) or
-            not isinstance(setting_2, str)):
+    if not isinstance(setting_1, str) or not isinstance(setting_2, str):
         # This logic replicates output of the deprecated Python2 `cmp` builtin
         return (setting_1 > setting_2) - (setting_1 < setting_2)
     match_1 = REC_SETTING_ELEMENT.match(setting_1)

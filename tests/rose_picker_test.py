@@ -17,6 +17,7 @@
 """
 Functional tests of rose-picker tool.
 """
+
 import collections
 import json
 from pathlib import Path
@@ -24,7 +25,7 @@ from subprocess import run, PIPE
 from typing import List
 
 
-PICKER_EXE = Path(__file__).parent.parent / 'source/rose_picker/entry.py'
+PICKER_EXE = Path(__file__).parent.parent / "source/rose_picker/entry.py"
 
 
 ###############################################################################
@@ -33,18 +34,17 @@ def test_no_namelist_for_member(tmp_path: Path):
     Confirms that metadata which describes a variable but no associated
     namelist throws an error.
     """
-    input_file = tmp_path / 'missing.nml'
-    input_file.write_text('''
+    input_file = tmp_path / "missing.nml"
+    input_file.write_text("""
 [namelist:kevin=orphan]
 type=integer
-''')
+""")
 
     command = [PICKER_EXE, input_file]
     process = run(command, cwd=input_file.parent, stderr=PIPE, check=False)
     assert process.returncode != 0
 
-    expected = 'namelist:kevin has no section in metadata' \
-               ' configuration file'
+    expected = "namelist:kevin has no section in metadata configuration file"
     assert expected in str(process.stderr)
 
 
@@ -53,8 +53,8 @@ def test_good_picker(tmp_path: Path):
     """
     Confirms that valid metadata produces expected output.
     """
-    input_file = tmp_path / 'good.nml'
-    input_file.write_text('''
+    input_file = tmp_path / "good.nml"
+    input_file.write_text("""
 [namelist:aerial]
 !instance_key_member=betty
 duplicate=true
@@ -83,53 +83,65 @@ length=:
 [namelist:aerial=bambam]
 type=integer
 length=:
-''')
+""")
 
     command = [PICKER_EXE, input_file]
     process = run(command, cwd=input_file.parent, check=False)
     assert process.returncode == 0
 
     # json file
-    output_file = input_file.with_suffix('.json')
+    output_file = input_file.with_suffix(".json")
     with output_file.open() as fhandle:
         result = json.load(fhandle)
 
     good_result = collections.OrderedDict(
-        {'aerial': {'members': {'dino':   {'length': ':',
-                                           'type':   'integer',
-                                           'bounds': 'namelist:sugar=TABLET'},
-                                'wilma':  {'length': ':',
-                                           'type':   'real',
-                                           'bounds':
-                                               'source:constants_mod=FUDGE'},
-                                'betty':  {'length': ':',
-                                           'type':   'logical',
-                                           'bounds': 'fred'},
-                                'bambam': {'length': ':',
-                                           'type':   'integer'},
-                                'fred':   {'type':   'real'},
-                                'barney': {'type':   'character'}},
-                    'multiple_instances_allowed': 'true',
-                    'instance_key_member': 'betty'}})
+        {
+            "aerial": {
+                "members": {
+                    "dino": {
+                        "length": ":",
+                        "type": "integer",
+                        "bounds": "namelist:sugar=TABLET",
+                    },
+                    "wilma": {
+                        "length": ":",
+                        "type": "real",
+                        "bounds": "source:constants_mod=FUDGE",
+                    },
+                    "betty": {"length": ":", "type": "logical", "bounds": "fred"},
+                    "bambam": {"length": ":", "type": "integer"},
+                    "fred": {"type": "real"},
+                    "barney": {"type": "character"},
+                },
+                "multiple_instances_allowed": "true",
+                "instance_key_member": "betty",
+            }
+        }
+    )
 
     assert result == good_result
 
 
 ###############################################################################
 def test_full_commandline(tmp_path: Path):
-    input_file = tmp_path / 'input/config-meta.conf'
+    input_file = tmp_path / "input/config-meta.conf"
     input_file.parent.mkdir()
-    input_file.write_text('\n')
+    input_file.write_text("\n")
 
-    include_dir = tmp_path / 'include'
+    include_dir = tmp_path / "include"
     include_dir.mkdir()
 
-    output_file = tmp_path / 'output/config-meta.json'
+    output_file = tmp_path / "output/config-meta.json"
     output_file.parent.mkdir()
 
-    command: List[str] = [str(PICKER_EXE), str(input_file),
-                          '-directory', str(output_file.parent),
-                          '-include_dirs', str(include_dir)]
+    command: List[str] = [
+        str(PICKER_EXE),
+        str(input_file),
+        "-directory",
+        str(output_file.parent),
+        "-include_dirs",
+        str(include_dir),
+    ]
     process = run(command, check=False)
     assert process.returncode == 0
 
