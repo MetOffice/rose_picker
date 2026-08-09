@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# -----------------------------------------------------------------------------
-# Copyright (C) 2012-2019 British Crown (Met Office) & Contributors.
-#
+# Copyright (C) British Crown (Met Office) & Contributors.
 # This file is part of Rose, a framework for meteorological suites.
 #
 # Rose is free software: you can redistribute it and/or modify
@@ -20,11 +16,13 @@
 # -----------------------------------------------------------------------------
 """Reporter for diagnostic messages."""
 
+import doctest
 import sys
 import time
+from typing import Optional
 
 
-class Reporter(object):
+class Reporter:
     """Report diagnostic messages.
 
     Note: How about the "logging" module in the standard library? It needs a
@@ -132,8 +130,8 @@ class Reporter(object):
         if isinstance(message, bytes):
             message = message.decode()
         if callable(self.event_handler):
-            return self.event_handler(message, kind, level, prefix, clip)
-
+            ret = self.event_handler(message, kind, level, prefix, clip)
+            return ret
         if isinstance(message, Event):
             if kind is None:
                 kind = message.kind
@@ -178,7 +176,7 @@ class Reporter(object):
     __call__ = report
 
 
-class ReporterContext(object):
+class ReporterContext:
     """A context for the reporter object.
 
     It has the following attributes:
@@ -232,24 +230,34 @@ class ReporterContext(object):
 
     def write(self, message):
         """Write the message to the context's handle."""
-        try:
-            return self.handle.buffer.write(message.encode("utf-8"))
-        except TypeError:
-            return self.handle.write(message)
-        except AttributeError:
-            return self.handle.write(message.encode("UTF-8"))
+        if isinstance(self.handle, doctest._SpoofOut):
+            # If context is a doctest:
+            ret_code = self.handle.write(message)
+        else:
+            try:
+                ret_code = self.handle.buffer.write(message.encode("utf-8"))
+            except TypeError:
+                ret_code = self.handle.write(message)
+            except AttributeError:
+                ret_code = self.handle.write(message.encode("UTF-8"))
+            self.handle.flush()
+        return ret_code
 
     def _tty_colour_err(self, str_):
         """Colour error string for terminal."""
         try:
             if self.handle.isatty():
-                return "%s%s%s" % (self.TTY_COLOUR_ERR, str_, self.TTY_COLOUR_NORM)
+                return "%s%s%s" % (
+                    self.TTY_COLOUR_ERR,
+                    str_,
+                    self.TTY_COLOUR_NORM,
+                )
         except AttributeError:
             pass
         return str_
 
 
-class Event(object):
+class Event:
     """A base class for events suitable for feeding into a Reporter."""
 
     VV = Reporter.VV
@@ -260,8 +268,8 @@ class Event(object):
     KIND_ERR = Reporter.KIND_ERR
     KIND_OUT = Reporter.KIND_OUT
 
-    LEVEL = None
-    KIND = None
+    LEVEL: Optional[int] = None
+    KIND: Optional[str] = None
 
     def __init__(self, *args, **kwargs):
         self.args = args

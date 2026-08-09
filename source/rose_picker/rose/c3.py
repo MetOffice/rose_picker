@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# -----------------------------------------------------------------------------
-# Copyright (C) 2012-2019 British Crown (Met Office) & Contributors.
-#
+#!/usr/bin/env python3
+# Copyright (C) British Crown (Met Office) & Contributors.
 # This file is part of Rose, a framework for meteorological suites.
 #
 # Rose is free software: you can redistribute it and/or modify
@@ -104,7 +101,7 @@ def mro(target_name, get_base_names, *args, **kwargs):
     return results[target_name]
 
 
-class _Test(object):
+class _Test:
     """Self tests. Print results in TAP format.
 
     Ordering obtained from http://www.python.org/download/releases/2.3/mro/.

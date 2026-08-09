@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# ----------------------------------------------------------------------------
-# Copyright (C) 2012-2019 British Crown (Met Office) & Contributors.
-#
+# Copyright (C) British Crown (Met Office) & Contributors.
 # This file is part of Rose, a framework for meteorological suites.
 #
 # Rose is free software: you can redistribute it and/or modify
@@ -27,8 +23,8 @@ environment variables are left unchanged.
 
 import os
 import re
-from rose_picker.rose.reporter import Event
 
+from rose_picker.rose.reporter import Event
 
 # _RE_DEFAULT = re.compile(r"""
 #     \A                                 # start
@@ -134,7 +130,7 @@ def env_var_escape(text, match_mode=None):
     return ret
 
 
-def env_var_process(text, unbound=None, match_mode=None):
+def env_var_process(text, unbound=None, match_mode=None, environ=os.environ):
     """Substitute environment variables into a string.
 
     For each $NAME and ${NAME} in "text", substitute with the value
@@ -156,8 +152,8 @@ def env_var_process(text, unbound=None, match_mode=None):
             groups = match.groupdict()
             substitute = groups["symbol"]
             if len(groups["escape"]) % 2 == 0:
-                if groups["name"] in os.environ:
-                    substitute = os.environ[groups["name"]]
+                if groups["name"] in environ:
+                    substitute = environ[groups["name"]]
                 elif unbound is not None:
                     substitute = str(unbound)
                 else:

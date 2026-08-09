@@ -58,11 +58,19 @@ jobs:
 
       - name: Format Python code
         if: always()
-        run: uv run ruff format --check .
+        run: uv run ruff format --check . --preview
 
       - name: Run Python tests
         if: always()
-        run: uv run pytest tests
+        run: uv run pytest -v tests
+
+      - name: Run Python doctests
+        if: always()
+        run: uv run pytest -v --doctest-modules
+
+      - name: Check Python type hints
+        if: always()
+        run: uv run mypy source/ tests/
 
       - name: Minimise uv cache
         run: uv cache prune --ci

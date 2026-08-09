@@ -25,16 +25,16 @@ import json
 import os.path
 from pathlib import Path
 import re
-from typing import Dict, List, Sequence
+from typing import Any
+from collections.abc import Sequence
 
-import rose_picker.rose  # type: ignore
-from rose_picker.rose.config import ConfigSyntaxError  # type: ignore
-from rose_picker.rose.config_tree import (  # type: ignore
-    ConfigTree,
+import rose_picker.rose
+from rose_picker.rose.config import ConfigSyntaxError
+from rose_picker.rose.config_tree import (
     ConfigTreeLoader,
 )
 
-_NAMELISTS_REGEX = re.compile(r"^\s*namelist\s*:\s*(\w*)\s*(?:=\s*(\S+))?")
+_NML_REGEX = re.compile(r"^\s*namelist\s*:\s*(\w*)\s*(?:=\s*(\S+))?")
 
 
 class RosePickerException(Exception):
@@ -45,7 +45,7 @@ class RosePickerException(Exception):
     pass  # pylint: disable=unnecessary-pass
 
 
-def _load_configuration(filename: Path, include_dirs: Sequence[Path]) -> ConfigTree:
+def _load_configuration(filename: Path, include_dirs: Sequence[Path]) -> Any:
     """
     Load and expand the configuration file.
     """
@@ -68,31 +68,31 @@ def _load_configuration(filename: Path, include_dirs: Sequence[Path]) -> ConfigT
         ) from config_syntax
 
 
-def _list_configuration(config_node: ConfigTree) -> List[str]:
+def _list_configuration(config_node: Any) -> list[str]:
     """
     Get keys list of all the namelists/members in the configuration file.
     """
-    node_keys = list(filter(_NAMELISTS_REGEX.match, config_node.get_value().keys()))
+    node_keys = [key for key in config_node.get_value().keys() if _NML_REGEX.match(key)]
     node_keys.sort()
     return node_keys
 
 
 def _extract_namelists(
-    config_node: ConfigTree,
+    config_node: Any,
     namelist_keys: Sequence[str],
     member_keys: Sequence[str],
-    listnames: List[str],
-    namelist_config: Dict[str, Dict[str, Dict[str, Dict[str, str]]]],
+    listnames: list[str],
+    namelist_config: dict[str, dict[str, dict[str, dict[str, str]]]],
 ):
     # pylint: disable-msg=too-many-locals
 
     """
-    Extracts namelist properties from meta-data.
+    Extract namelist properties from meta-data.
     """
     node_keys = _list_configuration(config_node)
 
     for key in node_keys:
-        match = _NAMELISTS_REGEX.match(key)
+        match = _NML_REGEX.match(key)
         if match is None:
             raise Exception(f"Failed to find key in string: {key}")
         node = match.group(0)
@@ -167,8 +167,8 @@ def main(meta_filename: Path, include_dirs: Sequence[Path], output_dir: Path):
         "values",
     ]
 
-    listnames: List[str] = []
-    namelist_config: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = (
+    listnames: list[str] = []
+    namelist_config: dict[str, dict[str, dict[str, dict[str, str]]]] = (
         collections.OrderedDict()
     )
     _extract_namelists(
@@ -179,11 +179,11 @@ def main(meta_filename: Path, include_dirs: Sequence[Path], output_dir: Path):
 
     # Output as .json file
     nml_config_filename = f"{basename[0]}.json"
-    with open(f"{output_dir}/{nml_config_filename}", "wt", encoding="utf-8") as output:
+    with open(f"{output_dir}/{nml_config_filename}", "w", encoding="utf-8") as output:
         json.dump(namelist_config, output, indent=4, ensure_ascii=True)
 
     # Write out namelists in configuration
-    with open(f"{output_dir}/config_namelists.txt", "wt", encoding="utf-8") as output:
+    with open(f"{output_dir}/config_namelists.txt", "w", encoding="utf-8") as output:
         for listname in listnames:
             output.write(f"{listname}\n")
 

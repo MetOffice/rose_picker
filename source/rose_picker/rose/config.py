@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# -----------------------------------------------------------------------------
-# Copyright (C) 2012-2019 British Crown (Met Office) & Contributors.
-#
+# Copyright (C) British Crown (Met Office) & Contributors.
 # This file is part of Rose, a framework for meteorological suites.
 #
 # Rose is free software: you can redistribute it and/or modify
@@ -115,7 +111,7 @@ STATE_SECT_IGNORED = "^"
 OPT_CONFIG_SETTING_COMMENT = ' setting from opt config "%s" (%s)'
 
 
-class ConfigNode(object):
+class ConfigNode:
     """Represent a node in a configuration file.
 
     Nodes are stored hierarchically, for instance the following config
@@ -187,9 +183,11 @@ class ConfigNode(object):
         self.comments = comments
 
     def __repr__(self):
-        return str(
-            {"value": self.value, "state": self.state, "comments": self.comments}
-        )
+        return str({
+            "value": self.value,
+            "state": self.state,
+            "comments": self.comments,
+        })
 
     __str__ = __repr__
 
@@ -306,10 +304,10 @@ class ConfigNode(object):
         """Return a node at the position of keys, if any.
 
         Args:
-            keys (list, optional): A list defining a hierarchy of
+            keys (list): A list defining a hierarchy of
                 node.value 'keys'. If an entry in keys is the null
                 string, it is skipped.
-            no_ignore (bool, optional): If True any ignored nodes will
+            no_ignore (bool): If True any ignored nodes will
                 not be returned.
 
         Returns:
@@ -388,12 +386,12 @@ class ConfigNode(object):
         If the node does not exist or is ignored, return None.
 
         Args:
-            keys (list, optional): A list defining a hierarchy of node.value
+            keys (list): A list defining a hierarchy of node.value
                 'keys'. If an entry in keys is the null string, it is skipped.
-            default (obj, optional): Return default if the value is not set.
+            default (object): Return default if the value is not set.
 
         Returns:
-            obj: The value of this ConfigNode at the position of keys or
+            object: The value of this ConfigNode at the position of keys or
             default if not set.
 
         Examples:
@@ -432,7 +430,7 @@ class ConfigNode(object):
         Arguments:
             keys (list): A list defining a hierarchy of node.value 'keys'.
                 If an entry in keys is the null string, it is skipped.
-            value (obj): The node.value property to set at this position.
+            value (object): The node.value property to set at this position.
             state (str): The node.state property to set at this position.
                 If None, the node.state property is unchanged.
             comments (str): The node.comments property to set at this position.
@@ -573,7 +571,12 @@ class ConfigNode(object):
                     subnode.state = state
                     subnode.comments = comments
             else:
-                self.set(keys=modified_key, value=value, state=state, comments=comments)
+                self.set(
+                    keys=modified_key,
+                    value=value,
+                    state=state,
+                    comments=comments,
+                )
         for removed_key, _ in config_diff.get_removed():
             self.unset(keys=removed_key)
 
@@ -620,7 +623,8 @@ class ConfigNode(object):
         """Produce a ConfigNodeDiff from another ConfigNode.
 
         Arguments:
-            other_config_node - The ConfigNode to be applied to this ConfigNode
+            other_config_node (ConfigNode):
+                The ConfigNode to be applied to this ConfigNode
                 to produce the ConfigNodeDiff.
 
         Returns:
@@ -651,7 +655,11 @@ class ConfigNode(object):
         This avoids a read-only error and allows __slots__ compatibility.
 
         """
-        return {"state": self.state, "value": self.value, "comments": self.comments}
+        return {
+            "state": self.state,
+            "value": self.value,
+            "comments": self.comments,
+        }
 
     def __setstate__(self, state):
         """Read in the results of __getstate__."""
@@ -660,7 +668,7 @@ class ConfigNode(object):
         self.comments = state["comments"]
 
 
-class ConfigNodeDiff(object):
+class ConfigNodeDiff:
     """Represent differences between two ConfigNode instances.
 
     Examples:
@@ -705,7 +713,11 @@ class ConfigNodeDiff(object):
     KEY_REMOVED = "removed"
 
     def __init__(self):
-        self._data = {self.KEY_ADDED: {}, self.KEY_REMOVED: {}, self.KEY_MODIFIED: {}}
+        self._data = {
+            self.KEY_ADDED: {},
+            self.KEY_REMOVED: {},
+            self.KEY_MODIFIED: {},
+        }
 
     def set_from_configs(self, config_node_1, config_node_2):
         """Create diff data from two ConfigNode instances.
@@ -751,25 +763,62 @@ class ConfigNodeDiff(object):
             if settings_1[keys] != settings_2[keys]:
                 self.set_modified_setting(keys, settings_1[keys], settings_2[keys])
 
-    def get_as_opt_config(self):
+    def get_as_opt_config(self, base_config=None):
         """Return a ConfigNode such that main + new_node = main + diff.
 
         Add all the added settings, add all the modified settings,
         add all the removed settings as user-ignored.
 
+        Args:
+            base_config: If a setting is present in the diff, but the parent
+                of the setting is not, then the state and keys of the parent
+                will revert to default. If "base_config" is provided, then
+                the state and comments will be transferred from this config
+                into the generated opt conf.
+
         Returns:
             ConfigNode: A new ConfigNode instance.
 
         Example:
-            >>> config_node_diff = ConfigNodeDiff()
-            >>> config_node_diff.set_added_setting(['foo'],
-            ...                                    ('Foo', None, None,))
-            >>> config_node_diff.set_removed_setting(['bar'],
-            ...                                      ('Bar', None, None,))
-            >>> config_node = config_node_diff.get_as_opt_config()
-            >>> list(config_node.walk()) # doctest: +NORMALIZE_WHITESPACE
-            [(['', 'bar'], {'value': 'Bar', 'state': '!', 'comments': []}),
-             (['', 'foo'], {'value': 'Foo', 'state': '', 'comments': []})]
+            >>> # create a config
+            >>> a = (
+            ...     ConfigNode()
+            ...     .set(('x'), state='!!', comments=['foo'])
+            ...     .set(('x', 'a'), '1')
+            ...     .set(('x', 'b'), '3')
+            ... )
+
+            >>> # create another config
+            >>> b = (
+            ...     ConfigNode()
+            ...     .set(('x'), state='!!', comments=['foo'])
+            ...     .set(('x', 'a'), '2')
+            ... )
+
+            >>> # calculate the diff between them
+            >>> diff = a - b
+
+            >>> # inspect the diff
+            >>> diff.get_added()
+            [(('x', 'b'), ('3', '', []))]
+            >>> diff.get_modified()
+            [(('x', 'a'), (('2', '', []), ('1', '', [])))]
+
+            # generate the diff as an optional config
+            # (note the state of "[x]" has been lost as it is not present in
+            # the diff)
+            >>> dump(diff.get_as_opt_config(), sys.stdout)
+            [x]
+            a=1
+            b=3
+
+            # generate the diff as an optional config supplying the base_config
+            # (note the state of "[x]" has been extracted from config "a")
+            >>> dump(diff.get_as_opt_config(a), sys.stdout)
+            #foo
+            [!!x]
+            a=1
+            b=3
 
         """
         node = ConfigNode()
@@ -783,17 +832,43 @@ class ConfigNodeDiff(object):
             # Need to add as user-ignored.
             value, state, comments = info
             node.set(
-                keys, value=value, state=node.STATE_USER_IGNORED, comments=comments
+                keys,
+                value=value,
+                state=node.STATE_USER_IGNORED,
+                comments=comments,
             )
+
+        if base_config:
+            all_keys = {
+                *(keys for keys, _ in self.get_added()),
+                *(keys for keys, _ in self.get_modified()),
+            }
+            all_parent_keys = set()
+            for keys in all_keys:
+                keys = tuple(keys)
+                while len(keys) > 1:
+                    keys = keys[:-1]
+                    all_parent_keys.add(keys)
+
+            for keys in all_parent_keys - all_keys:
+                parent = base_config.get(keys)
+                if parent:
+                    ret = node.get(keys)
+                    ret.state = parent.state
+                    ret.comments = parent.comments
+
         return node
 
     def set_added_setting(self, keys, data):
         """Set a config setting to be "added" in this ConfigNodeDiff.
 
         Args:
-            keys (list/tuple): The position of the setting to add.
-            data (obj, str, str): A tuple (value, state, comments) for the
-                setting to add.
+            keys (list, tuple):
+                The position of the setting to add.
+            data (tuple):
+                A tuple of the form
+                ``(value: object, state: string, comments: string)``
+                for the setting to add.
 
         Examples:
             >>> config_node_diff = ConfigNodeDiff()
@@ -822,11 +897,14 @@ class ConfigNodeDiff(object):
         None then no change will be made to any pre-existing value.
 
         Args:
-            keys (list/tuple): The position of the setting to add.
-            old_data (obj, str, str): A tuple (value, state, comments) for
-                the "current" properties of the setting to modify.
-            data (obj, str, str): A tuple (value, state, comments) for "new"
-                properties to change this setting to.
+            keys (list, tuple):
+                The position of the setting to add.
+            old_data (tuple):
+                A tuple ``(value: object, state: str, comments: str)``
+                for the "current" properties of the setting to modify.
+            data (object):
+                A tuple ``(value: object, state: str, comments: str)``
+                for "new" properties to change this setting to.
 
         Examples:
             >>> # Create a ConfigNodeDiff.
@@ -852,8 +930,10 @@ class ConfigNodeDiff(object):
         """Set a config setting to be "removed" in this ConfigNodeDiff.
 
         Arguments:
-            keys (list): The position of the setting to add.
-            data (obj, str, str): A tuple (value, state, comments) of the
+            keys (list):
+                The position of the setting to add.
+            data (tuple):
+                A tuple ``(value: object, state: str, comments: str)`` of the
                 properties for the setting to remove.
 
         Example:
@@ -928,10 +1008,10 @@ class ConfigNodeDiff(object):
         set to None for sections.
 
         Returns:
-            list - A list of the form [(keys, data), ...]:
-                - keys - The position of an added setting.
-                - data - Tuple of the form (value, state, comments) of the
-                  properties of the removed setting.
+            list: A list of the form ``[(keys, data), ...]``:
+               - keys - The position of an added setting.
+               - data - Tuple of the form (value, state, comments) of the
+                 properties of the removed setting.
 
         Examples:
             >>> config_node_diff = ConfigNodeDiff()
@@ -1007,7 +1087,7 @@ class ConfigNodeDiff(object):
         self._data[self.KEY_REMOVED] = {}
 
 
-class ConfigDumper(object):
+class ConfigDumper:
     """Dumper of a ConfigNode object in Rose INI format.
 
     Examples:
@@ -1046,17 +1126,17 @@ class ConfigDumper(object):
 
         Args:
             root (ConfigNode): The root config node.
-            target (str/file): An open file handle or a string containing a
+            target (object): An open file handle or a string containing a
                 file path. If not specified, the result is written to
                 sys.stdout.
-            sort_sections (fcn - optional): An optional argument that should be
+            sort_sections (Callable): An optional argument that should be
                 a function for sorting a list of section keys.
-            sort_option_items (fcn - optional): An optional argument that
+            sort_option_items (Callable): An optional argument that
                 should be a function for sorting a list of option (key, value)
                 tuples in string values.
-            env_escape_ok (bool - optional): An optional argument to indicate
+            env_escape_ok (bool): An optional argument to indicate
                 that $NAME and ${NAME} syntax in values should be escaped.
-            concat_mode (bool - optional): Switch on concatenation mode. If
+            concat_mode (bool): Switch on concatenation mode. If
                 True, add [] before root level options.
 
         """
@@ -1072,7 +1152,10 @@ class ConfigDumper(object):
             if not os.path.isdir(target_dir):
                 os.makedirs(target_dir)
             handle = NamedTemporaryFile(
-                mode="w", prefix=os.path.basename(target), dir=target_dir, delete=False
+                mode="w",
+                prefix=os.path.basename(target),
+                dir=target_dir,
+                delete=False,
             )
         blank = ""
         if root.comments:
@@ -1156,7 +1239,7 @@ class ConfigDumper(object):
         return "#%s\n" % (comment)
 
 
-class ConfigLoader(object):
+class ConfigLoader:
     """Loader of an INI format configuration into a ConfigNode object.
 
     Example:
@@ -1181,18 +1264,25 @@ class ConfigLoader(object):
     TYPE_OPTION = "TYPE_OPTION"
     UNKNOWN_NAME = "<???>"
 
-    def __init__(self, char_assign=CHAR_ASSIGN, char_comment=CHAR_COMMENT):
+    def __init__(
+        self,
+        char_assign=CHAR_ASSIGN,
+        char_comment=CHAR_COMMENT,
+        allow_sections=True,
+    ):
         """Initialise the configuration utility.
 
         Arguments:
-        char_comment -- the character to indicate the start of a
-        comment.
-        char_assign -- the character to use to delimit a key=value
-        assignment.
+            char_assign (str): the character to use to delimit a key=value
+                assignment.
+            char_comment (str): the character to indicate the start of a
+                comment.
+            allow_sections (bool): whether to permit sections in the config.
 
         """
         self.char_assign = char_assign
         self.char_comment = char_comment
+        self.allow_sections = allow_sections
         self.re_option = re.compile(
             r"^(?P<state>!?!?)(?P<option>[^\s"
             + char_assign
@@ -1223,25 +1313,25 @@ class ConfigLoader(object):
 
         Arguments:
             source (str): A file path.
-            node (ConfigNode - optional): A ConfigNode object if specified,
+            node (ConfigNode): A ConfigNode object if specified,
                 otherwise one is created.
-            more_keys (list - optional): A list of additional optional
+            more_keys (list): A list of additional optional
                 configuration names. If source is "rose-${TYPE}.conf", the
                 file of each name should be "opt/rose-${TYPE}-${NAME}.conf".
-            used_keys (list - optional): If defined, it should be a list for
+            used_keys (list): If defined, it should be a list for
                 this method to  append to. The key of each successfully loaded
                 optional configuration will be appended to the list (unless the
                 key is already in the list). Missing optional configurations
                 that are specified in more_keys will not raise an error.
                 If not defined, any missing optional configuration will
                 trigger an OSError.
-            mark_opt_configs (bool - optional): if True, add comments above any
+            mark_opt_configs (bool): if True, add comments above any
                 settings which have been loaded from an optional config.
-            return_config_map (bool - optional): If True, construct and return
+            return_config_map (bool): If True, construct and return
                 a dict (config_map) containing config names vs their uncombined
                 nodes. Optional configurations use their opt keys as keys, and
                 the main configuration uses 'None'.
-            defines (list - optional): A list of [SECTION]KEY=VALUE overrides.
+            defines (list): A list of [SECTION]KEY=VALUE overrides.
 
         Returns:
             tuple: node or (node, config_map):
@@ -1382,6 +1472,8 @@ class ConfigLoader(object):
         if node is None:
             node = ConfigNode()
         handle, file_name = self._get_file_and_name(source)
+        if isinstance(file_name, int):  # Probably a temporary file
+            file_name = ""
         keys = []  # Currently position under root node
         type_ = None  # Type of current node, section or option?
         comments = None  # Comments associated with next node
@@ -1390,7 +1482,10 @@ class ConfigLoader(object):
         while True:
             line = handle.readline()
             if isinstance(line, bytes):
-                line = line.decode(errors="ignore")
+                try:
+                    line = line.decode()
+                except UnicodeDecodeError as exc:
+                    raise ConfigDecodeError(source, exc)
             if not line:
                 break
             line_num += 1
@@ -1415,43 +1510,54 @@ class ConfigLoader(object):
             # Match a section header?
             match = self.RE_SECTION.match(line)
             if match:
-                head, section, state = match.group("head", "section", "state")
-                bad_index = self._check_section_value(section)
-                if bad_index > -1:
+                if self.allow_sections:
+                    head, section, state = match.group("head", "section", "state")
+                    bad_index = self._check_section_value(section)
+                    if bad_index > -1:
+                        raise ConfigSyntaxError(
+                            ConfigSyntaxError.BAD_CHAR,
+                            file_name,
+                            line_num,
+                            len(head) + bad_index,
+                            line,
+                        )
+                    # Find position under root node
+                    if type_ == self.TYPE_OPTION:
+                        keys.pop()
+                    if keys:
+                        keys.pop()
+                    section = section.strip()
+                    if section:
+                        keys.append(section)
+                        type_ = self.TYPE_SECTION
+                    else:
+                        keys = []
+                        type_ = None
+                    section_node = node.get(keys[:])
+                    if section_node is None:
+                        node.set(keys[:], {}, state, comments)
+                    else:
+                        section_node.state = state
+                        if comments:
+                            section_node.comments += comments
+                    comments = []
+                    continue
+                else:
                     raise ConfigSyntaxError(
-                        ConfigSyntaxError.BAD_CHAR,
+                        ConfigSyntaxError.SECTIONS_NOT_ALLOWED,
                         file_name,
                         line_num,
-                        len(head) + bad_index,
+                        0,
                         line,
                     )
-                # Find position under root node
-                if type_ == self.TYPE_OPTION:
-                    keys.pop()
-                if keys:
-                    keys.pop()
-                section = section.strip()
-                if section:
-                    keys.append(section)
-                    type_ = self.TYPE_SECTION
-                else:
-                    keys = []
-                    type_ = None
-                section_node = node.get(keys[:])
-                if section_node is None:
-                    node.set(keys[:], {}, state, comments)
-                else:
-                    section_node.state = state
-                    if comments:
-                        section_node.comments += comments
-                comments = []
-                continue
             # Match the start of an option setting?
             match = self.re_option.match(line)
             if not match:
-                raise ConfigSyntaxError(
-                    ConfigSyntaxError.BAD_SYNTAX, file_name, line_num, 0, line
-                )
+                if self.allow_sections:
+                    err = ConfigSyntaxError.BAD_SYNTAX
+                else:
+                    err = ConfigSyntaxError.BAD_SYNTAX_NO_SECTIONS
+                raise ConfigSyntaxError(err, file_name, line_num, 0, line)
             option, value, state = match.group("option", "value", "state")
             if type_ == self.TYPE_OPTION:
                 keys.pop()
@@ -1546,7 +1652,11 @@ class ConfigLoader(object):
         return (file_, file_name)
 
 
-class ConfigSyntaxError(Exception):
+class ConfigError(Exception):
+    """Base class for config errors."""
+
+
+class ConfigSyntaxError(ConfigError):
     """Exception raised for syntax error loading a configuration file.
 
     Attributes:
@@ -1574,10 +1684,14 @@ class ConfigSyntaxError(Exception):
 
     BAD_CHAR = "BAD_CHAR"
     BAD_SYNTAX = "BAD_SYNTAX"
+    BAD_SYNTAX_NO_SECTIONS = "BAD_SYNTAX_NO_SECTIONS"
+    SECTIONS_NOT_ALLOWED = "SECTIONS_NOT_ALLOWED"
 
     MESSAGES = {
-        BAD_CHAR: """unexpected character or end of value""",
-        BAD_SYNTAX: '''expecting "[SECTION]" or "KEY=VALUE"''',
+        BAD_CHAR: "unexpected character or end of value",
+        BAD_SYNTAX: 'expecting "[SECTION]" or "KEY=VALUE"',
+        BAD_SYNTAX_NO_SECTIONS: 'expecting "KEY=VALUE"',
+        SECTIONS_NOT_ALLOWED: "sections not permitted in this configuration",
     }
 
     def __init__(self, code, file_name, line_num, col_num, line):
@@ -1589,13 +1703,31 @@ class ConfigSyntaxError(Exception):
         self.line = line
 
     def __str__(self):
-        return "%s(%d): %s\n%s%s^" % (
-            self.file_name,
-            self.line_num,
-            self.MESSAGES[self.code],
-            self.line,
-            " " * self.col_num,
+        msg = self.MESSAGES[self.code]
+        return (
+            f"{self.file_name}(line {self.line_num}): {msg}\n"
+            f"{self.line}{' ' * self.col_num}^"
         )
+
+
+class ConfigDecodeError(ConfigError):
+    """Exception that should be raised when loading a configuration file that
+    is not encoded in a UTF-8 compatible charset.
+
+    Args:
+        path (str): Path to the config file
+        unicode_decode_err (UnicodeDecodeError): The original exception raised
+            when doing bytes.decode()
+    """
+
+    MESSAGE = "Configuration files must be encoded in UTF-8 (or a subset of UTF-8)"
+
+    def __init__(self, path, unicode_decode_err):
+        self.path = path
+        self.err = unicode_decode_err
+
+    def __str__(self):
+        return f"{self.MESSAGE}. {self.path}: {self.err}"
 
 
 def dump(

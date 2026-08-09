@@ -22,7 +22,6 @@ import collections
 import json
 from pathlib import Path
 from subprocess import run, PIPE
-from typing import List
 
 
 PICKER_EXE = Path(__file__).parent.parent / "source/rose_picker/entry.py"
@@ -94,30 +93,28 @@ length=:
     with output_file.open() as fhandle:
         result = json.load(fhandle)
 
-    good_result = collections.OrderedDict(
-        {
-            "aerial": {
-                "members": {
-                    "dino": {
-                        "length": ":",
-                        "type": "integer",
-                        "bounds": "namelist:sugar=TABLET",
-                    },
-                    "wilma": {
-                        "length": ":",
-                        "type": "real",
-                        "bounds": "source:constants_mod=FUDGE",
-                    },
-                    "betty": {"length": ":", "type": "logical", "bounds": "fred"},
-                    "bambam": {"length": ":", "type": "integer"},
-                    "fred": {"type": "real"},
-                    "barney": {"type": "character"},
+    good_result = collections.OrderedDict({
+        "aerial": {
+            "members": {
+                "dino": {
+                    "length": ":",
+                    "type": "integer",
+                    "bounds": "namelist:sugar=TABLET",
                 },
-                "multiple_instances_allowed": "true",
-                "instance_key_member": "betty",
-            }
+                "wilma": {
+                    "length": ":",
+                    "type": "real",
+                    "bounds": "source:constants_mod=FUDGE",
+                },
+                "betty": {"length": ":", "type": "logical", "bounds": "fred"},
+                "bambam": {"length": ":", "type": "integer"},
+                "fred": {"type": "real"},
+                "barney": {"type": "character"},
+            },
+            "multiple_instances_allowed": "true",
+            "instance_key_member": "betty",
         }
-    )
+    })
 
     assert result == good_result
 
@@ -134,7 +131,7 @@ def test_full_commandline(tmp_path: Path):
     output_file = tmp_path / "output/config-meta.json"
     output_file.parent.mkdir()
 
-    command: List[str] = [
+    command: list[str] = [
         str(PICKER_EXE),
         str(input_file),
         "-directory",

@@ -1,21 +1,24 @@
 # Rose
 
-[![Build Status](https://travis-ci.org/metomi/rose.svg?branch=master)](https://travis-ci.org/metomi/rose)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/ad021a33e7a64b398f792305dd901795)](https://www.codacy.com/app/metomi/rose?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=metomi/rose&amp;utm_campaign=Badge_Grade)
+[![test](https://github.com/metomi/rose/actions/workflows/test.yml/badge.svg)](https://github.com/metomi/rose/actions/workflows/test.yml)
 [![DOI](https://zenodo.org/badge/6223866.svg)](https://zenodo.org/badge/latestdoi/6223866)
-[![codecov](https://codecov.io/gh/metomi/rose/branch/master/graph/badge.svg)](https://codecov.io/gh/metomi/rose)
 
 Rose: a framework for managing and running meteorological suites.
 
 ### Python 2 or Python 3 ?
 
-Currently in the source code repository:
- - **master branch:** Python 3, **no GUI** - **Rose-2/Cylc-8 Work In Progress**
- - **2019.01.x branch:** Python 2, PyGTK GUI - **Rose-1/Cylc-7 Maintenance**
+#### Rose 2019
 
-The first official Rose-2/Cylc-8 release (with a new web UI) is not expected
-until late 2019. Until then we recommend the latest rose-2019.01.x/cylc-7.8.x
-release for production use.
+- Python 2
+- PyGTK GUI
+- `2019.01.x` branch in the source code
+
+#### Rose 2
+
+- Python 3
+- PyGObject GUI
+- Web-based GUIs will follow in later Rose 2 releases
+- `master` branch in the source code
 
 [Installation](http://metomi.github.io/rose/doc/html/installation.html) |
 [User Guide](http://metomi.github.io/rose/) |
@@ -23,7 +26,7 @@ release for production use.
 
 ## Copyright and Terms of Use
 
-Copyright (C) 2012-2019 British Crown (Met Office) &amp; Contributors
+Copyright (C) 2012-<span actions:bind='current-year'>2026</span> British Crown (Met Office) &amp; Contributors
 
 Rose is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

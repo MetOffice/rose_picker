@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# -----------------------------------------------------------------------------
-# Copyright (C) 2012-2019 British Crown (Met Office) & Contributors.
-#
+# Copyright (C) British Crown (Met Office) & Contributors.
 # This file is part of Rose, a framework for meteorological suites.
 #
 # Rose is free software: you can redistribute it and/or modify
@@ -28,7 +24,12 @@ This module contains the constants that are used globally within these.
 CONFIG_DELIMITER = "="
 
 # Filenames and directory names
-CONFIG_NAMES = ["rose-app.conf", "rose-meta.conf", "rose-suite.conf", "rose-suite.info"]
+CONFIG_NAMES = [
+    "rose-app.conf",
+    "rose-meta.conf",
+    "rose-suite.conf",
+    "rose-suite.info",
+]
 GLOB_CONFIG_FILE = "rose*.conf"
 META_CONFIG_NAME = "rose-meta.conf"
 CONFIG_META_DIR = "meta"
@@ -68,16 +69,6 @@ SUB_CONFIG_DEFAULT_META_IDS = [
     "command",
     "file:",
     "poll",
-]
-TOP_CONFIG_DEFAULT_META_IDS = [
-    "file:",
-    "jinja2:suite.rc",
-    "=meta",
-    "=opts",
-    "=root-dir",
-    "=root-dir{share}",
-    "=root-dir{share/cycle}",
-    "=root-dir{work}",
 ]
 CONFIG_SETTING_INDEX_DEFAULT = "1"
 
@@ -153,4 +144,4 @@ FILE_VAR_SOURCE = "source"
 # Paths in the Rose distribution.
 FILEPATH_README = "README.md"
 
-__version__ = "2.0a1"
+__version__ = "2.7.0"

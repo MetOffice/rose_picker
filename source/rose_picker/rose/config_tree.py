@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# -----------------------------------------------------------------------------
-# (C) British Crown Copyright 2012-8 Met Office.
-#
+#!/usr/bin/env python3
+# Copyright (C) British Crown (Met Office) & Contributors.
 # This file is part of Rose, a framework for meteorological suites.
 #
 # Rose is free software: you can redistribute it and/or modify
@@ -20,12 +17,14 @@
 # -----------------------------------------------------------------------------
 """Rose configuration directory inheritance."""
 
-from __future__ import absolute_import
-from __future__ import print_function
+from io import StringIO
 import os
-from rose_picker.rose.c3 import mro
-from rose_picker.rose.config import ConfigNode, ConfigLoader
 import shlex
+from shutil import rmtree
+from tempfile import mkdtemp
+
+from rose_picker.rose.c3 import mro
+from rose_picker.rose.config import ConfigDumper, ConfigLoader, ConfigNode
 
 
 class BadOptionalConfigurationKeysError(Exception):
@@ -35,7 +34,7 @@ class BadOptionalConfigurationKeysError(Exception):
         return "Bad optional configuration key(s): " + ", ".join(self.args[0])
 
 
-class ConfigTree(object):
+class ConfigTree:
     """A run time Rose configuration with linearised inheritance.
 
     conf_tree.node -- The ConfigNode object of the configuration tree.
@@ -43,7 +42,7 @@ class ConfigTree(object):
                        in {rel_path: conf_dir_0, ...}
     conf_tree.files_locs -- A dict of all files in the configuration tree
                             in {rel_path: [config_dir_0, ...], ...}
-    conf_tree.conf_dirs -- A lineralised list containing the source
+    conf_tree.conf_dirs -- A linearised list containing the source
                            directories of this configuration tree.
     """
 
@@ -72,7 +71,7 @@ class ConfigTree(object):
         return [os.path.join(file_loc, key) for file_loc in self.file_locs[key]]
 
 
-class ConfigTreeLoader(object):
+class ConfigTreeLoader:
     """Load a Rose configuration with inheritance."""
 
     def __init__(self, *args, **kwargs):
@@ -86,6 +85,7 @@ class ConfigTreeLoader(object):
         opt_keys=None,
         conf_node=None,
         no_ignore=False,
+        defines=None,
     ):
         """Load a (runtime) configuration directory with inheritance.
 
@@ -100,6 +100,7 @@ class ConfigTreeLoader(object):
         conf_node -- A rose_picker.rose.config.ConfigNode to extend, or None to use a
                      fresh one.
         no_ignore -- If True, skip loading ignored config settings.
+        defines -- A list of [SECTION]KEY=VALUE overrides.
 
         """
 
@@ -110,7 +111,10 @@ class ConfigTreeLoader(object):
         conf_file_name = os.path.join(conf_dir, conf_name)
         used_keys = []
         nodes[conf_dir] = self.node_loader.load_with_opts(
-            conf_file_name, more_keys=opt_keys, used_keys=used_keys
+            conf_file_name,
+            more_keys=opt_keys,
+            used_keys=used_keys,
+            defines=defines,
         )
 
         conf_tree = ConfigTree()
@@ -168,7 +172,13 @@ class ConfigTreeLoader(object):
     __call__ = load
 
     def _get_base_names(
-        self, my_conf_dir, conf_name, conf_dir_paths, opt_keys, used_keys, nodes
+        self,
+        my_conf_dir,
+        conf_name,
+        conf_dir_paths,
+        opt_keys,
+        used_keys,
+        nodes,
     ):
         """Return a list of configuration directories to import."""
         values = shlex.split(nodes[my_conf_dir].get_value(["import"], ""))
@@ -197,7 +207,7 @@ class ConfigTreeLoader(object):
         return os.path.abspath(os.path.join(conf_dir_paths[0], conf_dir))
 
 
-class _Test(object):
+class _Test:
     """Self tests. Print results in TAP format."""
 
     def __init__(self):
@@ -217,8 +227,9 @@ class _Test(object):
     def test1(self):
         """Test: configuration file only."""
         os.mkdir("t1")
-        handle = open("t1/rose-t.conf", "wb")
-        handle.write(r"""title=breakfast
+        handle = open("t1/rose-t.conf", "w")
+        handle.write(
+            r"""title=breakfast
 type=fried up
 
 [bacon]
@@ -228,7 +239,8 @@ type=streaky
 [egg]
 number=2
 type=fried
-""")
+"""
+        )
         handle.close()
         conf_tree = self.config_tree_loader("t1", "rose-t.conf")
 
@@ -257,8 +269,9 @@ type=fried
     def test2(self):
         """Test: configuration file and some other files."""
         os.mkdir("t2")
-        handle = open("t2/rose-t.conf", "wb")
-        handle.write(r"""title=all day breakfast
+        handle = open("t2/rose-t.conf", "w")
+        handle.write(
+            r"""title=all day breakfast
 
 [sausage]
 number=3
@@ -272,13 +285,16 @@ type=brown
 [tomato]
 number=1
 type=grilled
-""")
+"""
+        )
         handle.close()
         os.mkdir("t2/bin")
-        handle = open("t2/bin/make-breakfast", "wb")
-        handle.write(r"""#!/bin/sh
+        handle = open("t2/bin/make-breakfast", "w")
+        handle.write(
+            r"""#!/bin/sh
 echo "Making breakfast $@"
-""")
+"""
+        )
         handle.close()
         os.chmod("t2/bin/make-breakfast", 0o755)
         os.mkdir("t2/etc")
@@ -287,7 +303,7 @@ echo "Making breakfast $@"
             ("bread", "slice bread"),
             ("tomato", "a red tomato"),
         ):
-            handle = open(os.path.join("t2/etc", key), "wb")
+            handle = open(os.path.join("t2/etc", key), "w")
             handle.write(val + "\n")
             handle.close()
         conf_tree = self.config_tree_loader("t2", "rose-t.conf")
@@ -330,13 +346,15 @@ type=grilled
     def test3(self):
         """Test: configuration that imports t1 and t2."""
         os.mkdir("t3")
-        handle = open("t3/rose-t.conf", "wb")
-        handle.write(r"""import=t2 t1
+        handle = open("t3/rose-t.conf", "w")
+        handle.write(
+            r"""import=t2 t1
 size=large
-""")
+"""
+        )
         handle.close()
         os.mkdir("t3/etc")
-        handle = open("t3/etc/bread", "wb")
+        handle = open("t3/etc/bread", "w")
         handle.write("50/50 slice bread\n")
         handle.close()
         conf_tree = self.config_tree_loader("t3", "rose-t.conf")
@@ -387,25 +405,31 @@ type=grilled
             },
         )
         self.test(
-            "t3.conf_dirs", conf_tree.conf_dirs, [t3_conf_dir, t2_conf_dir, t1_conf_dir]
+            "t3.conf_dirs",
+            conf_tree.conf_dirs,
+            [t3_conf_dir, t2_conf_dir, t1_conf_dir],
         )
 
     def test3_opt(self):
         """Test: configuration that imports t1 and t2, with opt conf."""
         os.mkdir("t1/opt")
-        handle = open("t1/opt/rose-t-go-large.conf", "wb")
-        handle.write(r"""[bacon]
+        handle = open("t1/opt/rose-t-go-large.conf", "w")
+        handle.write(
+            r"""[bacon]
 number=4
 
 [egg]
 number=3
-""")
+"""
+        )
         handle.close()
         os.mkdir("t3/opt")
-        handle = open("t3/opt/rose-t-go-large.conf", "wb")
-        handle.write(r"""[bean]
+        handle = open("t3/opt/rose-t-go-large.conf", "w")
+        handle.write(
+            r"""[bean]
 type=baked
-""")
+"""
+        )
         handle.close()
         conf_tree = self.config_tree_loader("t3", "rose-t.conf", opt_keys=["go-large"])
 
@@ -449,13 +473,15 @@ type=grilled
         """Test: as t3, but use an alternate path."""
         os.chdir("../b")
         os.mkdir("t4")
-        handle = open("t4/rose-t.conf", "wb")
-        handle.write(r"""import=t2 t1
+        handle = open("t4/rose-t.conf", "w")
+        handle.write(
+            r"""import=t2 t1
 size=large
-""")
+"""
+        )
         handle.close()
         os.mkdir("t4/etc")
-        handle = open("t4/etc/bread", "wb")
+        handle = open("t4/etc/bread", "w")
         handle.write("50/50 slice bread\n")
         handle.close()
         conf_tree = self.config_tree_loader(
@@ -510,7 +536,9 @@ type=grilled
             },
         )
         self.test(
-            "t4.conf_dirs", conf_tree.conf_dirs, [t4_conf_dir, t2_conf_dir, t1_conf_dir]
+            "t4.conf_dirs",
+            conf_tree.conf_dirs,
+            [t4_conf_dir, t2_conf_dir, t1_conf_dir],
         )
 
     def run(self):
@@ -538,7 +566,7 @@ type=grilled
 if __name__ == "__main__":
     # These modules are only required for running the self tests.
     from rose_picker.rose.config import ConfigDumper
-    from StringIO import StringIO
+    from io import StringIO
     from shutil import rmtree
     from tempfile import mkdtemp
 

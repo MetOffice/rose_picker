@@ -6,7 +6,7 @@ name = "rose_picker"
 description = "Converts Rose metadata file into JSON format."
 readme = "README.rst"
 license = {text = "GPLv3"}
-requires-python = ">=3.11"
+requires-python = "==3.12.5"
 dynamic = ["version"]
 
 [project.scripts]
@@ -14,7 +14,6 @@ rose_picker = "rose_picker.entry:cli"
 
 [project.optional-dependencies]
 dev = [
-    "flake8",
     "mypy",
     "pytest",
     "ruff",
@@ -31,3 +30,15 @@ version = {attr = "rose_picker.VERSION"}
 
 [tool.setuptools.packages.find]
 where = ["source"]
+
+[tool.ruff]
+line-length = 88
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I", "UP", "D4"]
+ignore = ["I001", "UP031"]
+[tool.ruff.lint.per-file-ignores]
+"source/rose_picker/rose/*" = ["B", "D", "UP"]
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
